@@ -1,9 +1,9 @@
 # =============================================================================
 # Export.ps1
-# Exporteren naar Excel (.xlsx, zonder dat Excel geinstalleerd hoeft te zijn),
-# CSV (puntkomma-gescheiden) en een zelfstandig HTML-rapport.
+# Exporting to Excel (.xlsx, without needing Excel installed), CSV
+# (semicolon-separated) and a self-contained HTML report.
 #
-# Kolomdefinitie ($Cols): lijst van @{ H = 'Koptekst'; P = 'Eigenschapsnaam' }
+# Column definition ($Cols): list of @{ H = 'Header'; P = 'PropertyName' }
 # -----------------------------------------------------------------------------
 
 function Get-CellText {
@@ -53,7 +53,7 @@ function Get-ColumnLetter {
     return $s
 }
 
-# Bouwt de XML van 1 werkblad. Header: string[]; Matrix: lijst van string[]
+# Builds the XML of one worksheet. Header: string[]; Matrix: list of string[]
 function New-SheetXml {
     param($Header, $Matrix)
 
@@ -63,7 +63,7 @@ function New-SheetXml {
     [void]$sb.Append('<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">')
     [void]$sb.Append('<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>')
 
-    # Kolombreedtes op basis van de inhoud (max 60 tekens)
+    # Column widths based on content (max 60 characters)
     [void]$sb.Append('<cols>')
     for ($c = 0; $c -lt $colCount; $c++) {
         $max = ([string]$Header[$c]).Length
@@ -114,19 +114,19 @@ function Add-ZipText {
     } finally { $stream.Dispose() }
 }
 
-# Sheets: lijst van @{ Name = 'Blad'; Cols = ...; Rows = ... }
+# Sheets: list of @{ Name = 'Sheet'; Cols = ...; Rows = ... }
 function Export-Xlsx {
     param([string]$Path, $Sheets)
 
     Add-Type -AssemblyName System.IO.Compression
 
-    # Werkbladen voorbereiden (naam opschonen, matrix bouwen)
+    # Prepare worksheets (clean up the name, build the matrix)
     $prepared = New-Object System.Collections.Generic.List[object]
     $usedNames = @{}
     foreach ($s in $Sheets) {
         $name = [regex]::Replace([string]$s.Name, '[\[\]\:\*\?\/\\]', '-')
         if ($name.Length -gt 31) { $name = $name.Substring(0, 31) }
-        if (-not $name) { $name = 'Blad' }
+        if (-not $name) { $name = 'Sheet' }
         $base = $name; $k = 2
         while ($usedNames.ContainsKey($name.ToLowerInvariant())) { $name = $base.Substring(0, [math]::Min($base.Length, 28)) + ' ' + $k; $k++ }
         $usedNames[$name.ToLowerInvariant()] = $true
@@ -172,7 +172,7 @@ function Export-Xlsx {
 
     $rootRels = $xml + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'
 
-    # Stijlen: 0 = standaard, 1 = kop (wit op blauw), 2 = cel (tekstterugloop, bovenaan uitgelijnd)
+    # Styles: 0 = default, 1 = header (white on blue), 2 = cell (text wrap, top aligned)
     $styles = $xml + '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
         '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts>' +
         '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF0F6CBD"/><bgColor indexed="64"/></patternFill></fill></fills>' +
@@ -207,7 +207,7 @@ function Export-Xlsx {
 
 
 # -----------------------------------------------------------------------------
-# HTML-rapport (1 bestand, met zoeken en sorteren in de browser)
+# HTML report (single file, with search and sorting in the browser)
 # -----------------------------------------------------------------------------
 
 function ConvertTo-HtmlText {
@@ -216,13 +216,13 @@ function ConvertTo-HtmlText {
     return ($t -replace "`r?`n", '<br>')
 }
 
-# Cards: lijst van @{ Label; Value }. Sections: lijst van @{ Title; Cols; Rows }
+# Cards: list of @{ Label; Value }. Sections: list of @{ Title; Cols; Rows }
 function Export-HtmlReport {
     param([string]$Path, [string]$Title, $Cards, $Sections, [string]$Subtitle = '')
 
     $head = @'
 <!DOCTYPE html>
-<html lang="nl"><head><meta charset="utf-8"><title>@@TITLE@@</title>
+<html lang="en"><head><meta charset="utf-8"><title>@@TITLE@@</title>
 <style>
 body{font-family:Segoe UI,Arial,sans-serif;margin:0;background:#f3f2f1;color:#201f1e}
 header{background:#0b3c5d;color:#fff;padding:18px 28px}
@@ -245,7 +245,7 @@ function sortT(th){var t=th;while(t&&t.tagName!=='TABLE'){t=t.parentNode;}var i=
 '@
     $sb = New-Object System.Text.StringBuilder
     [void]$sb.Append($head.Replace('@@TITLE@@', (ConvertTo-HtmlText $Title)))
-    [void]$sb.Append('<header><h1>' + (ConvertTo-HtmlText $Title) + '</h1><div>' + (ConvertTo-HtmlText ('Gegenereerd op ' + (Get-Date -Format 'yyyy-MM-dd HH:mm') + ' ' + $Subtitle)) + '</div></header><main>')
+    [void]$sb.Append('<header><h1>' + (ConvertTo-HtmlText $Title) + '</h1><div>' + (ConvertTo-HtmlText ('Generated on ' + (Get-Date -Format 'yyyy-MM-dd HH:mm') + ' ' + $Subtitle)) + '</div></header><main>')
 
     if ($Cards) {
         [void]$sb.Append('<div class="cards">')
@@ -258,7 +258,7 @@ function sortT(th){var t=th;while(t&&t.tagName!=='TABLE'){t=t.parentNode;}var i=
     foreach ($s in $Sections) {
         $rows = @($s.Rows)
         [void]$sb.Append('<h2>' + (ConvertTo-HtmlText ([string]$s.Title)) + ' (' + $rows.Count + ')</h2><div>')
-        [void]$sb.Append('<input placeholder="Zoeken..." oninput="filt(this)"><table><thead><tr>')
+        [void]$sb.Append('<input placeholder="Search..." oninput="filt(this)"><table><thead><tr>')
         foreach ($c in $s.Cols) { [void]$sb.Append('<th onclick="sortT(this)">' + (ConvertTo-HtmlText ([string]$c.H)) + '</th>') }
         [void]$sb.Append('</tr></thead><tbody>')
         foreach ($r in $rows) {

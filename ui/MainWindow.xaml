@@ -15,20 +15,20 @@
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
-    <!-- Bovenbalk -->
+    <!-- Top bar -->
     <Border Grid.Row="0" Background="#0B3C5D">
       <DockPanel Margin="16,0" LastChildFill="False">
         <TextBlock DockPanel.Dock="Left" Text="Intune Management Tool" Foreground="White" FontSize="17"
                    FontWeight="SemiBold" VerticalAlignment="Center"/>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
           <TextBlock x:Name="TxtAccount" Foreground="#C7E0F4" VerticalAlignment="Center" Margin="0,0,16,0"/>
-          <Button x:Name="BtnLogin" Content="Aanmelden met Microsoft" Style="{StaticResource HeaderButton}"/>
-          <Button x:Name="BtnLoad" Content="Gegevens laden" Style="{StaticResource HeaderPrimary}" IsEnabled="False" Margin="0"/>
+          <Button x:Name="BtnLogin" Content="Sign in with Microsoft" Style="{StaticResource HeaderButton}"/>
+          <Button x:Name="BtnLoad" Content="Load data" Style="{StaticResource HeaderPrimary}" IsEnabled="False" Margin="0"/>
         </StackPanel>
       </DockPanel>
     </Border>
 
-    <!-- Middengedeelte: navigatie links, inhoud rechts -->
+    <!-- Middle: navigation on the left, content on the right -->
     <Grid Grid.Row="1">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="260"/>
@@ -52,14 +52,14 @@
             <TextBlock Text="Per type" FontSize="16" FontWeight="SemiBold" Margin="0,10,0,6"/>
             <DataGrid x:Name="DashTypeGrid" HeadersVisibility="Column" MaxHeight="380"/>
             <DockPanel Margin="0,18,0,6">
-              <Button x:Name="BtnDashExport" DockPanel.Dock="Right" Content="Rapport exporteren" Margin="0"/>
-              <TextBlock Text="Belangrijkste aandachtspunten" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              <Button x:Name="BtnDashExport" DockPanel.Dock="Right" Content="Export report" Margin="0"/>
+              <TextBlock Text="Top attention points" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
             </DockPanel>
             <DataGrid x:Name="DashAttentionGrid" HeadersVisibility="Column" MaxHeight="380"/>
           </StackPanel>
         </ScrollViewer>
 
-        <!-- Tabelweergave (gebruikt door bijna alle onderdelen) -->
+        <!-- Table view (used by almost all sections) -->
         <Grid x:Name="PanelTable" Visibility="Collapsed">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -75,13 +75,13 @@
           <DockPanel Grid.Row="1" Margin="0,0,0,10" LastChildFill="False">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
               <TextBlock x:Name="TxtCount" Foreground="#605E5C" VerticalAlignment="Center" Margin="0,0,14,0"/>
-              <Button x:Name="BtnExport" Content="Exporteren..." Margin="0"/>
+              <Button x:Name="BtnExport" Content="Export..." Margin="0"/>
             </StackPanel>
             <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-              <TextBlock Text="Zoeken:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <TextBlock Text="Search:" VerticalAlignment="Center" Margin="0,0,8,0"/>
               <TextBox x:Name="TxtSearch" Width="260" Margin="0,0,14,0"/>
               <ComboBox x:Name="CmbPlatform" Width="140" Margin="0,0,14,0"/>
-              <CheckBox x:Name="ChkUnassigned" Content="Alleen niet (volledig) toegewezen" VerticalAlignment="Center" Margin="0,0,14,0"/>
+              <CheckBox x:Name="ChkUnassigned" Content="Only not (fully) assigned" VerticalAlignment="Center" Margin="0,0,14,0"/>
               <Button x:Name="BtnExtra" Visibility="Collapsed"/>
             </StackPanel>
           </DockPanel>
@@ -91,7 +91,7 @@
                      Foreground="#8A8886" FontSize="15" IsHitTestVisible="False" TextAlignment="Center"/>
         </Grid>
 
-        <!-- Zoeken per groep of gebruiker -->
+        <!-- Search by group or user -->
         <Grid x:Name="PanelSearch" Visibility="Collapsed">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -100,18 +100,18 @@
           </Grid.RowDefinitions>
 
           <StackPanel Grid.Row="0">
-            <TextBlock Text="Zoeken op groep of gebruiker" FontSize="22" FontWeight="SemiBold"/>
+            <TextBlock Text="Search by group or user" FontSize="22" FontWeight="SemiBold"/>
             <TextBlock Foreground="#605E5C" Margin="0,2,0,10" TextWrapping="Wrap"
-                       Text="Typ het begin van een groepsnaam, gebruikersnaam of UPN en kies een resultaat. Je ziet dan alles wat aan die groep of gebruiker is toegewezen. Gegevens moeten eerst geladen zijn."/>
+                       Text="Type the start of a group name, user name or UPN and pick a result. You then see everything assigned to that group or user. The data must be loaded first."/>
           </StackPanel>
 
           <DockPanel Grid.Row="1" Margin="0,0,0,10" LastChildFill="False">
-            <Button x:Name="BtnSearchExport" DockPanel.Dock="Right" Content="Exporteren..." Margin="0"/>
+            <Button x:Name="BtnSearchExport" DockPanel.Dock="Right" Content="Export..." Margin="0"/>
             <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
               <TextBox x:Name="TxtDirQuery" Width="300" Margin="0,0,8,0"/>
-              <Button x:Name="BtnSearch" Content="Zoeken" Style="{StaticResource PrimaryButton}"/>
-              <CheckBox x:Name="ChkParents" Content="Inclusief bovenliggende (geneste) groepen" IsChecked="True" VerticalAlignment="Center" Margin="8,0,14,0"/>
-              <CheckBox x:Name="ChkAll" Content="Toon ook Alle gebruikers / Alle apparaten" IsChecked="True" VerticalAlignment="Center"/>
+              <Button x:Name="BtnSearch" Content="Search" Style="{StaticResource PrimaryButton}"/>
+              <CheckBox x:Name="ChkParents" Content="Include parent (nested) groups" IsChecked="True" VerticalAlignment="Center" Margin="8,0,14,0"/>
+              <CheckBox x:Name="ChkAll" Content="Also show All users / All devices" IsChecked="True" VerticalAlignment="Center"/>
             </StackPanel>
           </DockPanel>
 
@@ -136,10 +136,10 @@
       </Grid>
     </Grid>
 
-    <!-- Statusbalk -->
+    <!-- Status bar -->
     <Border Grid.Row="2" Background="White" BorderBrush="#E1DFDD" BorderThickness="0,1,0,0" Padding="14,6">
       <DockPanel>
-        <Button x:Name="BtnCancel" DockPanel.Dock="Right" Content="Annuleren" Visibility="Collapsed" Padding="10,2" Margin="0"/>
+        <Button x:Name="BtnCancel" DockPanel.Dock="Right" Content="Cancel" Visibility="Collapsed" Padding="10,2" Margin="0"/>
         <ProgressBar x:Name="Progress" DockPanel.Dock="Right" Width="220" Height="10" Margin="12,0" Visibility="Collapsed"/>
         <TextBlock x:Name="TxtStatus" VerticalAlignment="Center" Foreground="#323130" TextTrimming="CharacterEllipsis"/>
       </DockPanel>

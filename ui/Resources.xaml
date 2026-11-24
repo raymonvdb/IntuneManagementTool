@@ -1,7 +1,7 @@
-<!-- Gedeelde stijlen. Dit bestand bevat alleen de kinderen van een ResourceDictionary;
-     IntuneTool.ps1 plakt de inhoud in elk venster (hoofdvenster en detailvensters). -->
+<!-- Shared styles. This file contains only the children of a ResourceDictionary;
+     the code pastes its content into every window (main window and detail windows). -->
 
-<!-- Knoppen -->
+<!-- Buttons -->
 <Style TargetType="Button">
   <Setter Property="Background" Value="White"/>
   <Setter Property="Foreground" Value="#201F1E"/>
@@ -44,7 +44,7 @@
   <Setter Property="BorderBrush" Value="White"/>
 </Style>
 
-<!-- Linker navigatie (zoals in Intune) -->
+<!-- Left navigation (like Intune) -->
 <Style x:Key="NavButton" TargetType="RadioButton">
   <Setter Property="Foreground" Value="#323130"/>
   <Setter Property="Template">
@@ -75,7 +75,7 @@
   <Setter Property="Foreground" Value="#605E5C"/>
 </Style>
 
-<!-- Invoervelden -->
+<!-- Input controls -->
 <Style TargetType="TextBox">
   <Setter Property="Padding" Value="6,4"/>
   <Setter Property="BorderBrush" Value="#8A8886"/>
@@ -89,7 +89,7 @@
   <Setter Property="VerticalContentAlignment" Value="Center"/>
 </Style>
 
-<!-- Tabellen -->
+<!-- Tables -->
 <Style TargetType="DataGrid">
   <Setter Property="Background" Value="White"/>
   <Setter Property="BorderBrush" Value="#E1DFDD"/>
@@ -135,7 +135,7 @@
   </Style.Triggers>
 </Style>
 
-<!-- Celstijlen voor kolommen (tekstterugloop; status met kleur) -->
+<!-- Cell styles for columns (text wrapping; status with color) -->
 <Style x:Key="WrapCell" TargetType="TextBlock">
   <Setter Property="TextWrapping" Value="Wrap"/>
   <Setter Property="Margin" Value="6,3"/>
@@ -144,16 +144,16 @@
 
 <Style x:Key="StatusCell" TargetType="TextBlock" BasedOn="{StaticResource WrapCell}">
   <Style.Triggers>
-    <DataTrigger Binding="{Binding Status}" Value="Niet toegewezen"><Setter Property="Foreground" Value="#C50F1F"/></DataTrigger>
-    <DataTrigger Binding="{Binding Status}" Value="Alleen uitsluiting"><Setter Property="Foreground" Value="#B45F06"/></DataTrigger>
-    <DataTrigger Binding="{Binding Status}" Value="Toegewezen"><Setter Property="Foreground" Value="#107C10"/></DataTrigger>
+    <DataTrigger Binding="{Binding Status}" Value="Not assigned"><Setter Property="Foreground" Value="#C50F1F"/></DataTrigger>
+    <DataTrigger Binding="{Binding Status}" Value="Exclusion only"><Setter Property="Foreground" Value="#B45F06"/></DataTrigger>
+    <DataTrigger Binding="{Binding Status}" Value="Assigned"><Setter Property="Foreground" Value="#107C10"/></DataTrigger>
   </Style.Triggers>
 </Style>
 
 <Style x:Key="SeverityCell" TargetType="TextBlock" BasedOn="{StaticResource WrapCell}">
   <Style.Triggers>
-    <DataTrigger Binding="{Binding Severity}" Value="Fout"><Setter Property="Foreground" Value="#C50F1F"/></DataTrigger>
-    <DataTrigger Binding="{Binding Severity}" Value="Waarschuwing"><Setter Property="Foreground" Value="#B45F06"/></DataTrigger>
+    <DataTrigger Binding="{Binding Severity}" Value="Error"><Setter Property="Foreground" Value="#C50F1F"/></DataTrigger>
+    <DataTrigger Binding="{Binding Severity}" Value="Warning"><Setter Property="Foreground" Value="#B45F06"/></DataTrigger>
   </Style.Triggers>
 </Style>
 

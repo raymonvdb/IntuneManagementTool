@@ -1,11 +1,11 @@
 # =============================================================================
 # Ui.ps1
-# Alles wat met de gebruikersinterface te maken heeft: statusbalk, tabellen,
-# navigatie, dashboard, zoekpagina, detailvensters en exportdialogen.
+# Everything related to the user interface: status bar, tables,
+# navigation, dashboard, search page, detail windows and export dialogs.
 #
-# Let op: event handlers (Add_Click e.d.) staan in IntuneTool.ps1 en roepen
-# alleen de functies hieronder aan. Handlers gebruiken GEEN closures; ze krijgen
-# hun context via $sender.Tag of via $script:-variabelen.
+# Note: event handlers (Add_Click etc.) live in IntuneTool.ps1 and only call
+# the functions below. Handlers do NOT use closures; they get their context
+# via $sender.Tag or via $script: variables.
 # =============================================================================
 
 $script:CurrentView = $null
@@ -16,7 +16,7 @@ $script:Suspend     = $false
 
 
 # =============================================================================
-# 1. BASIS: status, voortgang, meldingen
+# 1. BASICS: status, progress, messages
 # =============================================================================
 
 function Invoke-UiRefresh {
@@ -36,7 +36,7 @@ function Set-Progress {
     Invoke-UiRefresh
 }
 
-# Zet de UI in "bezig"-modus: wachtcursor, navigatie uit, annuleerknop zichtbaar.
+# Puts the UI in "busy" mode: wait cursor, navigation off, cancel button visible.
 function Set-Busy {
     param([bool]$Busy, [bool]$ShowCancel = $true)
 
@@ -65,7 +65,7 @@ function Show-Info {
 
 function Show-Error {
     param([string]$Text)
-    [System.Windows.MessageBox]::Show($Text, 'Fout', 'OK', 'Error') | Out-Null
+    [System.Windows.MessageBox]::Show($Text, 'Error', 'OK', 'Error') | Out-Null
 }
 
 function New-Brush {
@@ -75,118 +75,118 @@ function New-Brush {
 
 
 # =============================================================================
-# 2. TABELKOLOMMEN
+# 2. TABLE COLUMNS
 # =============================================================================
-# H = koptekst, P = eigenschapsnaam, W = breedte (getal of '*'), Min = minimale
-# breedte voor '*'-kolommen, Style = naam van een celstijl uit Resources.xaml
+# H = header, P = property name, W = width (number or '*'), Min = minimum
+# width for '*' columns, Style = name of a cell style from Resources.xaml
 
 $script:ColSets = @{
     items = @(
-        @{ H = 'Naam';                           P = 'Name';     W = '*'; Min = 200 }
+        @{ H = 'Name';                           P = 'Name';     W = '*'; Min = 200 }
         @{ H = 'Type';                           P = 'Type';     W = 125 }
         @{ H = 'Subtype';                        P = 'Subtype';  W = 150 }
         @{ H = 'Platform';                       P = 'Platform'; W = 90 }
-        @{ H = 'Opgenomen groepen (include)';    P = 'Include';  W = '*'; Min = 190 }
-        @{ H = 'Uitgesloten groepen (exclude)';  P = 'Exclude';  W = '*'; Min = 150 }
+        @{ H = 'Included groups (include)';      P = 'Include';  W = '*'; Min = 190 }
+        @{ H = 'Excluded groups (exclude)';      P = 'Exclude';  W = '*'; Min = 150 }
         @{ H = 'Status';                         P = 'Status';   W = 120; Style = 'StatusCell' }
-        @{ H = 'Gewijzigd';                      P = 'Modified'; W = 120 }
+        @{ H = 'Modified';                       P = 'Modified'; W = 120 }
     )
     asr = @(
         @{ H = 'Policy';                         P = 'Policy';   W = '*'; Min = 170 }
-        @{ H = 'ASR-regel / instelling';         P = 'Rule';     W = '*'; Min = 220 }
-        @{ H = 'Modus';                          P = 'Mode';     W = 110 }
-        @{ H = 'Opgenomen groepen (include)';    P = 'Include';  W = '*'; Min = 150 }
-        @{ H = 'Uitgesloten groepen (exclude)';  P = 'Exclude';  W = '*'; Min = 130 }
-        @{ H = 'Bron';                           P = 'Source';   W = 120 }
+        @{ H = 'ASR rule / setting';             P = 'Rule';     W = '*'; Min = 220 }
+        @{ H = 'Mode';                           P = 'Mode';     W = 110 }
+        @{ H = 'Included groups (include)';      P = 'Include';  W = '*'; Min = 150 }
+        @{ H = 'Excluded groups (exclude)';      P = 'Exclude';  W = '*'; Min = 130 }
+        @{ H = 'Source';                         P = 'Source';   W = 120 }
         @{ H = 'Overlap / conflict';             P = 'Conflict'; W = '*'; Min = 200 }
     )
     attention = @(
-        @{ H = 'Ernst';    P = 'Severity'; W = 110; Style = 'SeverityCell' }
+        @{ H = 'Severity'; P = 'Severity'; W = 110; Style = 'SeverityCell' }
         @{ H = 'Type';     P = 'Type';     W = 140 }
         @{ H = 'Item';     P = 'Item';     W = '*'; Min = 220 }
-        @{ H = 'Probleem'; P = 'Issue';    W = '*'; Min = 300 }
+        @{ H = 'Issue';    P = 'Issue';    W = '*'; Min = 300 }
     )
     groups = @(
-        @{ H = 'Groep';                      P = 'Name';     W = '*'; Min = 240 }
-        @{ H = 'Dynamisch';                  P = 'Dynamic';  W = 90 }
-        @{ H = 'Leden (incl. geneste)';      P = 'Members';  W = 130 }
-        @{ H = 'Opgenomen in (aantal)';      P = 'IncCount'; W = 140 }
-        @{ H = 'Uitgesloten in (aantal)';    P = 'ExcCount'; W = 150 }
-        @{ H = 'Typen';                      P = 'Types';    W = '*'; Min = 200 }
+        @{ H = 'Group';                      P = 'Name';     W = '*'; Min = 240 }
+        @{ H = 'Dynamic';                    P = 'Dynamic';  W = 90 }
+        @{ H = 'Members (incl. nested)';     P = 'Members';  W = 150 }
+        @{ H = 'Included in (count)';        P = 'IncCount'; W = 140 }
+        @{ H = 'Excluded in (count)';        P = 'ExcCount'; W = 140 }
+        @{ H = 'Types';                      P = 'Types';    W = '*'; Min = 200 }
     )
     filters = @(
         @{ H = 'Filter';          P = 'Name';           W = '*'; Min = 200 }
         @{ H = 'Platform';        P = 'Platform';       W = 100 }
-        @{ H = 'Beheertype';      P = 'ManagementType'; W = 100 }
-        @{ H = 'Gebruikt in';     P = 'Used';           W = 90 }
-        @{ H = 'Regel';           P = 'Rule';           W = '*'; Min = 260 }
-        @{ H = 'Beschrijving';    P = 'Description';    W = '*'; Min = 150 }
+        @{ H = 'Management type'; P = 'ManagementType'; W = 130 }
+        @{ H = 'Used in';         P = 'Used';           W = 90 }
+        @{ H = 'Rule';            P = 'Rule';           W = '*'; Min = 260 }
+        @{ H = 'Description';     P = 'Description';    W = '*'; Min = 150 }
     )
     devices = @(
-        @{ H = 'Apparaat';        P = 'Name';       W = '*'; Min = 160 }
-        @{ H = 'Gebruiker';       P = 'User';       W = '*'; Min = 170 }
+        @{ H = 'Device';          P = 'Name';       W = '*'; Min = 160 }
+        @{ H = 'User';            P = 'User';       W = '*'; Min = 170 }
         @{ H = 'OS';              P = 'OS';         W = 90 }
-        @{ H = 'Versie';          P = 'Version';    W = 110 }
+        @{ H = 'Version';         P = 'Version';    W = 110 }
         @{ H = 'Compliance';      P = 'Compliance'; W = 110; Style = 'ComplianceCell' }
-        @{ H = 'Eigenaar';        P = 'Owner';      W = 90 }
+        @{ H = 'Owner';           P = 'Owner';      W = 90 }
         @{ H = 'Model';           P = 'Model';      W = '*'; Min = 140 }
-        @{ H = 'Serienummer';     P = 'Serial';     W = 130 }
-        @{ H = 'Versleuteld';     P = 'Encrypted';  W = 90 }
-        @{ H = 'Laatste sync';    P = 'LastSync';   W = 120 }
+        @{ H = 'Serial number';   P = 'Serial';     W = 130 }
+        @{ H = 'Encrypted';       P = 'Encrypted';  W = 90 }
+        @{ H = 'Last sync';       P = 'LastSync';   W = 120 }
     )
     search = @(
-        @{ H = 'Naam';        P = 'Name';    W = '*'; Min = 220 }
+        @{ H = 'Name';        P = 'Name';    W = '*'; Min = 220 }
         @{ H = 'Type';        P = 'Type';    W = 125 }
         @{ H = 'Subtype';     P = 'Subtype'; W = 150 }
         @{ H = 'Via';         P = 'Via';     W = '*'; Min = 180 }
-        @{ H = 'Modus';       P = 'Mode';    W = 95 }
+        @{ H = 'Mode';        P = 'Mode';    W = 95 }
         @{ H = 'Effect';      P = 'Effect';  W = 170 }
         @{ H = 'Details';     P = 'Detail';  W = '*'; Min = 150 }
     )
     typesummary = @(
-        @{ H = 'Type';               P = 'Type';        W = '*'; Min = 160 }
-        @{ H = 'Totaal';             P = 'Total';       W = 90 }
-        @{ H = 'Toegewezen';         P = 'Assigned';    W = 110 }
-        @{ H = 'Niet toegewezen';    P = 'Unassigned';  W = 130 }
-        @{ H = 'Alleen uitsluiting'; P = 'ExcludeOnly'; W = 140 }
-        @{ H = 'Alle apparaten';     P = 'AllDevices';  W = 120 }
-        @{ H = 'Alle gebruikers';    P = 'AllUsers';    W = 120 }
+        @{ H = 'Type';            P = 'Type';        W = '*'; Min = 160 }
+        @{ H = 'Total';           P = 'Total';       W = 90 }
+        @{ H = 'Assigned';        P = 'Assigned';    W = 110 }
+        @{ H = 'Not assigned';    P = 'Unassigned';  W = 120 }
+        @{ H = 'Exclusion only';  P = 'ExcludeOnly'; W = 130 }
+        @{ H = 'All devices';     P = 'AllDevices';  W = 110 }
+        @{ H = 'All users';       P = 'AllUsers';    W = 110 }
     )
     flat = @(
         @{ H = 'Type';        P = 'Type';       W = 120 }
         @{ H = 'Subtype';     P = 'Subtype';    W = 140 }
         @{ H = 'Platform';    P = 'Platform';   W = 90 }
-        @{ H = 'Naam';        P = 'Name';       W = '*' }
-        @{ H = 'Modus';       P = 'Mode';       W = 90 }
-        @{ H = 'Toegewezen aan'; P = 'Target';  W = '*' }
+        @{ H = 'Name';        P = 'Name';       W = '*' }
+        @{ H = 'Mode';        P = 'Mode';       W = 90 }
+        @{ H = 'Assigned to'; P = 'Target';     W = '*' }
         @{ H = 'Filter';      P = 'Filter';     W = 150 }
-        @{ H = 'Filtermodus'; P = 'FilterMode'; W = 90 }
+        @{ H = 'Filter mode'; P = 'FilterMode'; W = 90 }
         @{ H = 'Intent';      P = 'Intent';     W = 100 }
     )
     kv = @(
-        @{ H = 'Eigenschap'; P = 'Eigenschap'; W = 320 }
-        @{ H = 'Waarde';     P = 'Waarde';     W = '*' }
+        @{ H = 'Property'; P = 'Property'; W = 320 }
+        @{ H = 'Value';    P = 'Value';    W = '*' }
     )
     settings = @(
-        @{ H = 'Instelling'; P = 'Instelling'; W = '*'; Min = 300 }
-        @{ H = 'Waarde';     P = 'Waarde';     W = '*'; Min = 300 }
+        @{ H = 'Setting'; P = 'Setting'; W = '*'; Min = 300 }
+        @{ H = 'Value';   P = 'Value';   W = '*'; Min = 300 }
     )
     assignments = @(
-        @{ H = 'Modus';       P = 'ModeText';   W = 100 }
-        @{ H = 'Doel';        P = 'Target';     W = '*'; Min = 260 }
+        @{ H = 'Mode';        P = 'ModeText';   W = 100 }
+        @{ H = 'Target';      P = 'Target';     W = '*'; Min = 260 }
         @{ H = 'Filter';      P = 'Filter';     W = 200 }
-        @{ H = 'Filtermodus'; P = 'FilterMode'; W = 100 }
+        @{ H = 'Filter mode'; P = 'FilterMode'; W = 100 }
         @{ H = 'Intent';      P = 'Intent';     W = 160 }
     )
     states = @(
-        @{ H = 'Soort';    P = 'Kind';     W = 110 }
+        @{ H = 'Kind';     P = 'Kind';     W = 110 }
         @{ H = 'Policy';   P = 'Policy';   W = '*'; Min = 300 }
         @{ H = 'Platform'; P = 'Platform'; W = 120 }
         @{ H = 'Status';   P = 'State';    W = 130; Style = 'StateCell' }
     )
 }
 
-# Zet de kolommen van een DataGrid.
+# Sets the columns of a DataGrid.
 function Set-GridColumns {
     param($Target, $Cols)
 
@@ -209,7 +209,7 @@ function Set-GridColumns {
     }
 }
 
-# Zoekt in alle tekst/getal-eigenschappen van een rij (hoofdletterongevoelig).
+# Searches all text/number properties of a row (case-insensitive).
 function Test-RowMatch {
     param($Row, [string]$Query)
 
@@ -226,116 +226,116 @@ function Test-RowMatch {
 
 
 # =============================================================================
-# 3. WEERGAVEN (de onderdelen in de linker navigatie)
+# 3. VIEWS (the items in the left navigation)
 # =============================================================================
 # Kind    : dashboard | search | items | rows
-# Filter  : (items) scriptblock dat bepaalt welke items erbij horen
-# Rows    : (rows) scriptblock dat de rijen levert
-# Cols    : sleutel in $script:ColSets
-# Hide    : kolommen (eigenschapsnamen) die niet getoond worden
-# Open    : scriptblock dat bij dubbelklik op een rij wordt uitgevoerd
-# Action  : (optioneel) extra knop; ActionLabel is de tekst
-# Ensure  : (optioneel) scriptblock dat eerst de gegevens ophaalt
+# Filter  : (items) scriptblock that decides which items belong here
+# Rows    : (rows) scriptblock that supplies the rows
+# Cols    : key in $script:ColSets
+# Hide    : columns (property names) that are not shown
+# Open    : scriptblock that runs on double-click of a row
+# Action  : (optional) extra button; ActionLabel is its text
+# Ensure  : (optional) scriptblock that retrieves the data first
 
 $script:Views = @(
-    @{ Key = 'dashboard'; Group = 'Overzicht'; Label = 'Dashboard'; Kind = 'dashboard' }
-    @{ Key = 'attention'; Group = 'Overzicht'; Label = 'Aandachtspunten'; Kind = 'rows'; Cols = 'attention'
-       Title = 'Aandachtspunten'
-       Hint  = 'Dingen die meestal een controle of opruimactie waard zijn. Dubbelklik op een regel voor details. Met "Ledenaantal ophalen" worden ook lege groepen herkend.'
+    @{ Key = 'dashboard'; Group = 'Overview'; Label = 'Dashboard'; Kind = 'dashboard' }
+    @{ Key = 'attention'; Group = 'Overview'; Label = 'Attention points'; Kind = 'rows'; Cols = 'attention'
+       Title = 'Attention points'
+       Hint  = 'Things that usually deserve a check or a cleanup. Double-click a row for details. Use "Get member counts" to also detect empty groups.'
        Rows  = { Get-AttentionRows }
        Open  = { param($r) Open-ItemById $r.ItemId }
-       Action = { Invoke-MemberCountAction }; ActionLabel = 'Ledenaantal ophalen' }
-    @{ Key = 'all'; Group = 'Overzicht'; Label = 'Alle assignments'; Kind = 'items'; Cols = 'items'
-       Title = 'Alle assignments'
-       Hint  = 'Alle policies, scripts, apps en profielen met hun include- en exclude-assignments. Dubbelklik op een regel voor details en instellingen.'
+       Action = { Invoke-MemberCountAction }; ActionLabel = 'Get member counts' }
+    @{ Key = 'all'; Group = 'Overview'; Label = 'All assignments'; Kind = 'items'; Cols = 'items'
+       Title = 'All assignments'
+       Hint  = 'All policies, scripts, apps and profiles with their include and exclude assignments. Double-click a row for details and settings.'
        Filter = { $true }; Open = { param($r) Show-ItemDetails $r } }
-    @{ Key = 'search'; Group = 'Overzicht'; Label = 'Zoeken op groep/gebruiker'; Kind = 'search' }
+    @{ Key = 'search'; Group = 'Overview'; Label = 'Search by group/user'; Kind = 'search' }
 
-    @{ Key = 'config'; Group = 'Apparaten'; Label = 'Configuration profiles'; Kind = 'items'; Cols = 'items'; Hide = @()
+    @{ Key = 'config'; Group = 'Devices'; Label = 'Configuration profiles'; Kind = 'items'; Cols = 'items'; Hide = @()
        Title = 'Configuration profiles'
-       Hint  = 'Device configuration profiles, administrative templates en Settings catalog.'
+       Hint  = 'Device configuration profiles, administrative templates and Settings catalog.'
        Filter = { $_.Type -eq 'Device configuration' -or $_.Type -eq 'Settings catalog' }; Open = { param($r) Show-ItemDetails $r } }
-    @{ Key = 'compliance'; Group = 'Apparaten'; Label = 'Compliance policies'; Kind = 'items'; Cols = 'items'; Hide = @('Type', 'Subtype')
-       Title = 'Compliance policies'; Hint = 'Compliance policies voor apparaten.'
+    @{ Key = 'compliance'; Group = 'Devices'; Label = 'Compliance policies'; Kind = 'items'; Cols = 'items'; Hide = @('Type', 'Subtype')
+       Title = 'Compliance policies'; Hint = 'Device compliance policies.'
        Filter = { $_.Type -eq 'Compliance' }; Open = { param($r) Show-ItemDetails $r } }
-    @{ Key = 'scripts'; Group = 'Apparaten'; Label = 'Platform scripts'; Kind = 'items'; Cols = 'items'; Hide = @('Type')
-       Title = 'Platform scripts'; Hint = 'PowerShell- en shell-scripts. Dubbelklik om de scriptinhoud te lezen.'
+    @{ Key = 'scripts'; Group = 'Devices'; Label = 'Platform scripts'; Kind = 'items'; Cols = 'items'; Hide = @('Type')
+       Title = 'Platform scripts'; Hint = 'PowerShell and shell scripts. Double-click to read the script content.'
        Filter = { $_.Type -eq 'Platform script' }; Open = { param($r) Show-ItemDetails $r } }
-    @{ Key = 'remediations'; Group = 'Apparaten'; Label = 'Remediations'; Kind = 'items'; Cols = 'items'; Hide = @('Type')
-       Title = 'Remediations'; Hint = 'Proactive remediations. Dubbelklik om detection- en remediation-script te lezen.'
+    @{ Key = 'remediations'; Group = 'Devices'; Label = 'Remediations'; Kind = 'items'; Cols = 'items'; Hide = @('Type')
+       Title = 'Remediations'; Hint = 'Proactive remediations. Double-click to read the detection and remediation scripts.'
        Filter = { $_.Type -eq 'Remediation' }; Open = { param($r) Show-ItemDetails $r } }
-    @{ Key = 'winupdate'; Group = 'Apparaten'; Label = 'Windows updates'; Kind = 'items'; Cols = 'items'; Hide = @('Type')
-       Title = 'Windows updates'; Hint = 'Update rings, feature updates, quality updates en driver updates.'
+    @{ Key = 'winupdate'; Group = 'Devices'; Label = 'Windows updates'; Kind = 'items'; Cols = 'items'; Hide = @('Type')
+       Title = 'Windows updates'; Hint = 'Update rings, feature updates, quality updates and driver updates.'
        Filter = { $_.Type -eq 'Windows update' }; Open = { param($r) Show-ItemDetails $r } }
-    @{ Key = 'autopilot'; Group = 'Apparaten'; Label = 'Autopilot profielen'; Kind = 'items'; Cols = 'items'; Hide = @('Type', 'Platform')
-       Title = 'Autopilot deployment profiles'; Hint = 'Windows Autopilot deployment profiles en hun assignments.'
+    @{ Key = 'autopilot'; Group = 'Devices'; Label = 'Autopilot profiles'; Kind = 'items'; Cols = 'items'; Hide = @('Type', 'Platform')
+       Title = 'Autopilot deployment profiles'; Hint = 'Windows Autopilot deployment profiles and their assignments.'
        Filter = { $_.Type -eq 'Autopilot' }; Open = { param($r) Show-ItemDetails $r } }
-    @{ Key = 'enrollment'; Group = 'Apparaten'; Label = 'Enrollment (ESP, restricties)'; Kind = 'items'; Cols = 'items'; Hide = @('Type')
-       Title = 'Enrollment'; Hint = 'Enrollment Status Page, platform restrictions, device limits en Windows Hello for Business.'
+    @{ Key = 'enrollment'; Group = 'Devices'; Label = 'Enrollment (ESP, restrictions)'; Kind = 'items'; Cols = 'items'; Hide = @('Type')
+       Title = 'Enrollment'; Hint = 'Enrollment Status Page, platform restrictions, device limits and Windows Hello for Business.'
        Filter = { $_.Type -eq 'Enrollment' }; Open = { param($r) Show-ItemDetails $r } }
-    @{ Key = 'devices'; Group = 'Apparaten'; Label = 'Apparaten'; Kind = 'rows'; Cols = 'devices'
-       Title = 'Beheerde apparaten'
-       Hint  = 'Alle beheerde apparaten (wordt geladen zodra je deze pagina opent). Dubbelklik op een apparaat om de status van zijn policies te zien.'
+    @{ Key = 'devices'; Group = 'Devices'; Label = 'Devices'; Kind = 'rows'; Cols = 'devices'
+       Title = 'Managed devices'
+       Hint  = 'All managed devices (loaded when you open this page). Double-click a device to see the status of its policies.'
        Rows  = { $script:Devices }
        Ensure = { Initialize-Devices $false }
        Open  = { param($r) Show-DeviceDetails $r }
-       Action = { Initialize-Devices $true }; ActionLabel = 'Vernieuwen' }
+       Action = { Initialize-Devices $true }; ActionLabel = 'Refresh' }
 
-    @{ Key = 'es-all'; Group = 'Endpoint security'; Label = 'Alle endpoint security'; Kind = 'items'; Cols = 'items'; Hide = @('Type')
-       Title = 'Endpoint security'; Hint = 'Alle endpoint security policies (nieuwe en oude stijl) en security baselines.'
+    @{ Key = 'es-all'; Group = 'Endpoint security'; Label = 'All endpoint security'; Kind = 'items'; Cols = 'items'; Hide = @('Type')
+       Title = 'Endpoint security'; Hint = 'All endpoint security policies (new and old style) and security baselines.'
        Filter = { $_.Type -eq 'Endpoint security' }; Open = { param($r) Show-ItemDetails $r } }
-    @{ Key = 'asr'; Group = 'Endpoint security'; Label = 'ASR-regels'; Kind = 'rows'; Cols = 'asr'
-       Title = 'Attack Surface Reduction-regels'
-       Hint  = 'Elke ASR-regel per policy met modus en assignments. Overlap of conflicten tussen policies staan rechts. Met de knop scan je ook alle Settings catalog-profielen.'
+    @{ Key = 'asr'; Group = 'Endpoint security'; Label = 'ASR rules'; Kind = 'rows'; Cols = 'asr'
+       Title = 'Attack Surface Reduction rules'
+       Hint  = 'Every ASR rule per policy with mode and assignments. Overlap or conflicts between policies are shown on the right. The button also scans all Settings catalog profiles.'
        Rows  = { $script:AsrRows }
        Open  = { param($r) Open-ItemById $r.PolicyId }
-       Action = { Invoke-AsrScanAction }; ActionLabel = 'Scan ook Settings catalog' }
+       Action = { Invoke-AsrScanAction }; ActionLabel = 'Also scan Settings catalog' }
     @{ Key = 'es-asrpol'; Group = 'Endpoint security'; Label = 'Attack surface reduction'; Kind = 'items'; Cols = 'items'; Hide = @('Type')
-       Title = 'Attack surface reduction policies'; Hint = 'ASR rules, device control, exploit protection, app and browser isolation en web protection.'
+       Title = 'Attack surface reduction policies'; Hint = 'ASR rules, device control, exploit protection, app and browser isolation and web protection.'
        Filter = { $_.Type -eq 'Endpoint security' -and $_.Category -eq 'ASR' }; Open = { param($r) Show-ItemDetails $r } }
     @{ Key = 'es-av'; Group = 'Endpoint security'; Label = 'Antivirus'; Kind = 'items'; Cols = 'items'; Hide = @('Type')
        Title = 'Antivirus'; Hint = 'Microsoft Defender Antivirus policies.'
        Filter = { $_.Type -eq 'Endpoint security' -and $_.Category -eq 'Antivirus' }; Open = { param($r) Show-ItemDetails $r } }
     @{ Key = 'es-fw'; Group = 'Endpoint security'; Label = 'Firewall'; Kind = 'items'; Cols = 'items'; Hide = @('Type')
-       Title = 'Firewall'; Hint = 'Microsoft Defender Firewall policies en regels.'
+       Title = 'Firewall'; Hint = 'Microsoft Defender Firewall policies and rules.'
        Filter = { $_.Type -eq 'Endpoint security' -and $_.Category -eq 'Firewall' }; Open = { param($r) Show-ItemDetails $r } }
     @{ Key = 'es-de'; Group = 'Endpoint security'; Label = 'Disk encryption'; Kind = 'items'; Cols = 'items'; Hide = @('Type')
-       Title = 'Disk encryption'; Hint = 'BitLocker en FileVault policies.'
+       Title = 'Disk encryption'; Hint = 'BitLocker and FileVault policies.'
        Filter = { $_.Type -eq 'Endpoint security' -and $_.Category -eq 'Disk encryption' }; Open = { param($r) Show-ItemDetails $r } }
     @{ Key = 'es-edr'; Group = 'Endpoint security'; Label = 'Endpoint detection and response'; Kind = 'items'; Cols = 'items'; Hide = @('Type')
        Title = 'Endpoint detection and response'; Hint = 'EDR policies (Defender for Endpoint).'
        Filter = { $_.Type -eq 'Endpoint security' -and $_.Category -eq 'EDR' }; Open = { param($r) Show-ItemDetails $r } }
     @{ Key = 'es-acc'; Group = 'Endpoint security'; Label = 'Account protection'; Kind = 'items'; Cols = 'items'; Hide = @('Type')
-       Title = 'Account protection'; Hint = 'Windows Hello, Credential Guard en lokale beheerders.'
+       Title = 'Account protection'; Hint = 'Windows Hello, Credential Guard and local administrators.'
        Filter = { $_.Type -eq 'Endpoint security' -and $_.Category -eq 'Account protection' }; Open = { param($r) Show-ItemDetails $r } }
     @{ Key = 'es-base'; Group = 'Endpoint security'; Label = 'Security baselines'; Kind = 'items'; Cols = 'items'; Hide = @('Type')
-       Title = 'Security baselines'; Hint = 'Security baselines voor Windows, Edge, Microsoft 365 Apps en Defender for Endpoint.'
+       Title = 'Security baselines'; Hint = 'Security baselines for Windows, Edge, Microsoft 365 Apps and Defender for Endpoint.'
        Filter = { $_.Type -eq 'Endpoint security' -and $_.Category -eq 'Security baseline' }; Open = { param($r) Show-ItemDetails $r } }
 
     @{ Key = 'apps'; Group = 'Apps'; Label = 'Apps'; Kind = 'items'; Cols = 'items'; Hide = @('Type')
-       Title = 'Apps'; Hint = 'Alle apps met intent (Required / Available / Uninstall) per groep.'
+       Title = 'Apps'; Hint = 'All apps with intent (Required / Available / Uninstall) per group.'
        Filter = { $_.Type -eq 'App' }; Open = { param($r) Show-ItemDetails $r } }
     @{ Key = 'appprot'; Group = 'Apps'; Label = 'App protection policies'; Kind = 'items'; Cols = 'items'; Hide = @('Type', 'Subtype')
-       Title = 'App protection policies'; Hint = 'MAM-beleid voor iOS/iPadOS, Android en Windows.'
+       Title = 'App protection policies'; Hint = 'MAM policies for iOS/iPadOS, Android and Windows.'
        Filter = { $_.Type -eq 'App protection' }; Open = { param($r) Show-ItemDetails $r } }
     @{ Key = 'appconf'; Group = 'Apps'; Label = 'App configuration policies'; Kind = 'items'; Cols = 'items'; Hide = @('Type')
-       Title = 'App configuration policies'; Hint = 'App-configuratie voor beheerde apparaten en voor apps (MAM).'
+       Title = 'App configuration policies'; Hint = 'App configuration for managed devices and for apps (MAM).'
        Filter = { $_.Type -eq 'App configuration' }; Open = { param($r) Show-ItemDetails $r } }
 
-    @{ Key = 'groups'; Group = 'Groepen en filters'; Label = 'Groepen in gebruik'; Kind = 'rows'; Cols = 'groups'
-       Title = 'Groepen in gebruik'
-       Hint  = 'Alle groepen die in een assignment voorkomen. Dubbelklik op een groep om te zien waar hij allemaal aan gekoppeld is.'
+    @{ Key = 'groups'; Group = 'Groups and filters'; Label = 'Groups in use'; Kind = 'rows'; Cols = 'groups'
+       Title = 'Groups in use'
+       Hint  = 'All groups that occur in an assignment. Double-click a group to see everything it is linked to.'
        Rows  = { Get-GroupRows }
        Open  = { param($r) Open-GroupInSearch $r }
-       Action = { Invoke-MemberCountAction }; ActionLabel = 'Ledenaantal ophalen' }
-    @{ Key = 'filters'; Group = 'Groepen en filters'; Label = 'Assignment filters'; Kind = 'rows'; Cols = 'filters'
+       Action = { Invoke-MemberCountAction }; ActionLabel = 'Get member counts' }
+    @{ Key = 'filters'; Group = 'Groups and filters'; Label = 'Assignment filters'; Kind = 'rows'; Cols = 'filters'
        Title = 'Assignment filters'
-       Hint  = 'Alle assignment filters en hoe vaak ze gebruikt worden. Dubbelklik om te zien waar een filter gebruikt wordt.'
+       Hint  = 'All assignment filters and how often they are used. Double-click to see where a filter is used.'
        Rows  = { Get-FilterRows }
        Open  = { param($r) Open-FilterUsage $r } }
 )
 
-$script:PlatformChoices = @('Alle platformen', 'Windows', 'macOS', 'iOS/iPadOS', 'Android', 'Linux')
+$script:PlatformChoices = @('All platforms', 'Windows', 'macOS', 'iOS/iPadOS', 'Android', 'Linux')
 
 function Get-ViewColumns {
     param($V)
@@ -351,7 +351,7 @@ function Get-ViewRows {
     return @()
 }
 
-# Past de zoekfilters toe en ververst de tabel.
+# Applies the search filters and refreshes the table.
 function Update-Table {
     if ($script:Suspend) { return }
     $v = $script:CurrentView
@@ -364,7 +364,7 @@ function Update-Table {
             $plat = [string]$CmbPlatform.SelectedItem
             $rows = @($rows | Where-Object { $_.Platform -eq $plat })
         }
-        if ($ChkUnassigned.IsChecked) { $rows = @($rows | Where-Object { $_.Status -ne 'Toegewezen' }) }
+        if ($ChkUnassigned.IsChecked) { $rows = @($rows | Where-Object { $_.Status -ne 'Assigned' }) }
     }
 
     $q = $TxtSearch.Text.Trim()
@@ -372,12 +372,12 @@ function Update-Table {
 
     $script:VisibleRows = $rows
     $Grid.ItemsSource   = $rows
-    $TxtCount.Text      = '{0} regels' -f $rows.Count
+    $TxtCount.Text      = '{0} rows' -f $rows.Count
 
     if ($rows.Count -eq 0) {
-        if (-not $script:Connected)                                   { $TxtEmpty.Text = 'Meld je aan en klik op "Gegevens laden".' }
-        elseif (@($script:AllItems).Count -eq 0 -and $v.Key -ne 'devices') { $TxtEmpty.Text = 'Nog geen gegevens. Klik op "Gegevens laden".' }
-        else                                                          { $TxtEmpty.Text = 'Geen resultaten.' }
+        if (-not $script:Connected)                                        { $TxtEmpty.Text = 'Sign in and click "Load data".' }
+        elseif (@($script:AllItems).Count -eq 0 -and $v.Key -ne 'devices') { $TxtEmpty.Text = 'No data yet. Click "Load data".' }
+        else                                                               { $TxtEmpty.Text = 'No results.' }
         $TxtEmpty.Visibility = 'Visible'
     } else {
         $TxtEmpty.Visibility = 'Collapsed'
@@ -401,7 +401,7 @@ function Show-TableView {
     if ($V.Action) { $BtnExtra.Content = [string]$V.ActionLabel; $BtnExtra.Visibility = 'Visible' }
     else           { $BtnExtra.Visibility = 'Collapsed' }
 
-    # Filters terugzetten zonder dat elke wijziging een herberekening triggert
+    # Reset filters without every change triggering a recalculation
     $script:Suspend = $true
     $TxtSearch.Text = ''
     $CmbPlatform.SelectedIndex = 0
@@ -430,7 +430,7 @@ function Switch-View {
     elseif ($v.Kind -eq 'search') {
         $PanelSearch.Visibility = 'Visible'
         if (@($script:AllItems).Count -eq 0 -and -not $LstCandidates.ItemsSource) {
-            $TxtSearchInfo.Text = 'Meld je aan en laad eerst de gegevens.'
+            $TxtSearchInfo.Text = 'Sign in and load the data first.'
         }
     }
     else {
@@ -439,7 +439,7 @@ function Switch-View {
     }
 }
 
-# Zet tellers achter de navigatie-items.
+# Puts counters behind the navigation items.
 function Update-NavCounts {
     $loaded = (@($script:AllItems).Count -gt 0)
     foreach ($v in $script:Views) {
@@ -451,7 +451,7 @@ function Update-NavCounts {
     }
 }
 
-# Zoekt de rij waarop dubbelgeklikt is (en negeert klikken op kopjes).
+# Finds the row that was double-clicked (and ignores clicks on headers).
 function Get-ClickedRow {
     param($OriginalSource)
     $d = $OriginalSource
@@ -473,7 +473,7 @@ function Get-ClickedRow {
 function Open-ItemById {
     param([string]$Id)
     $it = $script:AllItems | Where-Object { $_.Id -eq $Id } | Select-Object -First 1
-    if ($it) { Show-ItemDetails $it } else { Show-Info 'Dit item is niet (meer) gevonden in de geladen gegevens.' }
+    if ($it) { Show-ItemDetails $it } else { Show-Info 'This item was not found (anymore) in the loaded data.' }
 }
 
 function Open-FilterUsage {
@@ -485,18 +485,18 @@ function Open-FilterUsage {
 function Open-GroupInSearch {
     param($Row)
     if ($Row.GroupId -eq 'ALL_DEVICES' -or $Row.GroupId -eq 'ALL_USERS') {
-        Show-Info 'Voor "Alle apparaten" en "Alle gebruikers" is geen zoekopdracht per groep mogelijk. Gebruik "Alle assignments" en zoek op de naam.'
+        Show-Info 'A per-group search is not possible for "All devices" and "All users". Use "All assignments" and search on the name.'
         return
     }
     $script:NavButtons['search'].IsChecked = $true
-    $cand = [pscustomobject]@{ Kind = 'group'; Id = [string]$Row.GroupId; Name = [string]$Row.Name; Display = ('[Groep] ' + [string]$Row.Name) }
+    $cand = [pscustomobject]@{ Kind = 'group'; Id = [string]$Row.GroupId; Name = [string]$Row.Name; Display = ('[Group] ' + [string]$Row.Name) }
     $LstCandidates.ItemsSource = @($cand)
     $LstCandidates.SelectedIndex = 0
 }
 
 
 # =============================================================================
-# 4. ACTIES (extra knoppen)
+# 4. ACTIONS (extra buttons)
 # =============================================================================
 
 function Invoke-ViewAction {
@@ -505,28 +505,28 @@ function Invoke-ViewAction {
 }
 
 function Invoke-MemberCountAction {
-    if (@($script:AllItems).Count -eq 0) { Show-Info 'Laad eerst de gegevens.'; return }
+    if (@($script:AllItems).Count -eq 0) { Show-Info 'Load the data first.'; return }
     try {
         Set-Busy $true
         $r = Invoke-MemberCountCheck
-        Set-Status ('Ledenaantal opgehaald voor {0} groepen ({1} mislukt).' -f ($r.Total - $r.Failed), $r.Failed)
+        Set-Status ('Member counts retrieved for {0} groups ({1} failed).' -f ($r.Total - $r.Failed), $r.Failed)
     }
     catch { Show-Error (Get-ErrorText $_) }
     finally { Set-Busy $false }
     if ($r -and $r.Failed -gt 0) {
-        Show-Info ('Voor {0} groepen kon het ledenaantal niet worden opgehaald (waarschijnlijk ontbrekende rechten: GroupMember.Read.All).' -f $r.Failed)
+        Show-Info ('The member count could not be retrieved for {0} groups (probably missing permission: GroupMember.Read.All).' -f $r.Failed)
     }
     Update-NavCounts
     Update-Table
 }
 
 function Invoke-AsrScanAction {
-    if (@($script:AllItems).Count -eq 0) { Show-Info 'Laad eerst de gegevens.'; return }
+    if (@($script:AllItems).Count -eq 0) { Show-Info 'Load the data first.'; return }
     try {
         Set-Busy $true
         $script:LoadErrors.Clear()
         $script:AsrRows = @(Get-AsrRows -ScanAllCatalog $true)
-        Set-Status ('{0} ASR-regels gevonden (inclusief Settings catalog).' -f $script:AsrRows.Count)
+        Set-Status ('{0} ASR rules found (including Settings catalog).' -f $script:AsrRows.Count)
     }
     catch { Show-Error (Get-ErrorText $_) }
     finally { Set-Busy $false }
@@ -540,13 +540,13 @@ function Initialize-Devices {
     if (-not $Force -and $null -ne $script:Devices) { return }
     try {
         Set-Busy $true $false
-        Set-Status 'Apparaten ophalen...'
+        Set-Status 'Retrieving devices...'
         $script:Devices = @(Get-DeviceRows)
-        Set-Status ('{0} apparaten geladen.' -f $script:Devices.Count)
+        Set-Status ('{0} devices loaded.' -f $script:Devices.Count)
     }
     catch {
         $script:Devices = @()
-        Show-Error ('Apparaten ophalen mislukt (recht DeviceManagementManagedDevices.Read.All nodig): ' + (Get-ErrorText $_))
+        Show-Error ('Retrieving devices failed (permission DeviceManagementManagedDevices.Read.All is required): ' + (Get-ErrorText $_))
     }
     finally { Set-Busy $false }
     Update-NavCounts
@@ -591,7 +591,7 @@ function New-Card {
     return $border
 }
 
-# Klik op een kaart: ga naar de bijbehorende weergave (eventueel met filter).
+# Click on a card: go to the matching view (optionally with a filter).
 function Invoke-CardAction {
     param([string]$Tag)
     $parts = $Tag -split '\|'
@@ -607,7 +607,7 @@ function Update-Dashboard {
     $items = @($script:AllItems)
 
     if ($items.Count -eq 0) {
-        $TxtDashHint.Text = 'Nog geen gegevens. Meld je aan en klik op "Gegevens laden".'
+        $TxtDashHint.Text = 'No data yet. Sign in and click "Load data".'
         $DashTypeGrid.ItemsSource = @()
         $DashAttentionGrid.ItemsSource = @()
         return
@@ -616,29 +616,29 @@ function Update-Dashboard {
     $attention = @(Get-AttentionRows)
     $typeRows  = @(Get-TypeSummaryRows)
 
-    $assigned   = @($items | Where-Object { $_.Status -eq 'Toegewezen' }).Count
-    $unassigned = @($items | Where-Object { $_.Status -eq 'Niet toegewezen' }).Count
-    $exclOnly   = @($items | Where-Object { $_.Status -eq 'Alleen uitsluiting' }).Count
+    $assigned   = @($items | Where-Object { $_.Status -eq 'Assigned' }).Count
+    $unassigned = @($items | Where-Object { $_.Status -eq 'Not assigned' }).Count
+    $exclOnly   = @($items | Where-Object { $_.Status -eq 'Exclusion only' }).Count
     $allDev     = ($typeRows | Measure-Object -Property AllDevices -Sum).Sum
     $allUsr     = ($typeRows | Measure-Object -Property AllUsers -Sum).Sum
     $groupIds   = @($items | ForEach-Object { $_.Assignments } | Where-Object { $_.Kind -eq 'group' } | Select-Object -ExpandProperty GroupId -Unique)
-    $errors     = @($attention | Where-Object { $_.Severity -eq 'Fout' }).Count
+    $errors     = @($attention | Where-Object { $_.Severity -eq 'Error' }).Count
     $asrRules   = @($script:AsrRows | Select-Object -ExpandProperty Rule -Unique).Count
     $asrConf    = @($script:AsrRows | Where-Object { $_.Conflict -like 'CONFLICT*' } | Select-Object -ExpandProperty DefinitionId -Unique).Count
 
-    $TxtDashHint.Text = 'Samenvatting van alle geladen items. Klik op een kaart om naar de details te gaan.'
+    $TxtDashHint.Text = 'Summary of all loaded items. Click a card to go to the details.'
 
-    [void]$CardPanel.Children.Add((New-Card 'Items totaal' $items.Count '#0F6CBD' 'all'))
-    [void]$CardPanel.Children.Add((New-Card 'Toegewezen' $assigned '#107C10' 'all'))
-    [void]$CardPanel.Children.Add((New-Card 'Niet toegewezen' $unassigned '#C50F1F' 'all|unassigned'))
-    [void]$CardPanel.Children.Add((New-Card 'Alleen uitsluitingen' $exclOnly '#B45F06' 'all|unassigned'))
-    [void]$CardPanel.Children.Add((New-Card 'Toegewezen aan Alle apparaten' $allDev '#0F6CBD' 'all'))
-    [void]$CardPanel.Children.Add((New-Card 'Toegewezen aan Alle gebruikers' $allUsr '#0F6CBD' 'all'))
-    [void]$CardPanel.Children.Add((New-Card 'Groepen in gebruik' $groupIds.Count '#0F6CBD' 'groups'))
-    [void]$CardPanel.Children.Add((New-Card 'Aandachtspunten' $attention.Count '#B45F06' 'attention'))
-    [void]$CardPanel.Children.Add((New-Card 'Fouten' $errors '#C50F1F' 'attention'))
-    [void]$CardPanel.Children.Add((New-Card 'ASR-regels in gebruik' $asrRules '#0F6CBD' 'asr'))
-    [void]$CardPanel.Children.Add((New-Card 'ASR-conflicten' $asrConf '#C50F1F' 'asr'))
+    [void]$CardPanel.Children.Add((New-Card 'Items total' $items.Count '#0F6CBD' 'all'))
+    [void]$CardPanel.Children.Add((New-Card 'Assigned' $assigned '#107C10' 'all'))
+    [void]$CardPanel.Children.Add((New-Card 'Not assigned' $unassigned '#C50F1F' 'all|unassigned'))
+    [void]$CardPanel.Children.Add((New-Card 'Exclusions only' $exclOnly '#B45F06' 'all|unassigned'))
+    [void]$CardPanel.Children.Add((New-Card 'Assigned to All devices' $allDev '#0F6CBD' 'all'))
+    [void]$CardPanel.Children.Add((New-Card 'Assigned to All users' $allUsr '#0F6CBD' 'all'))
+    [void]$CardPanel.Children.Add((New-Card 'Groups in use' $groupIds.Count '#0F6CBD' 'groups'))
+    [void]$CardPanel.Children.Add((New-Card 'Attention points' $attention.Count '#B45F06' 'attention'))
+    [void]$CardPanel.Children.Add((New-Card 'Errors' $errors '#C50F1F' 'attention'))
+    [void]$CardPanel.Children.Add((New-Card 'ASR rules in use' $asrRules '#0F6CBD' 'asr'))
+    [void]$CardPanel.Children.Add((New-Card 'ASR conflicts' $asrConf '#C50F1F' 'asr'))
 
     Set-GridColumns $DashTypeGrid $script:ColSets.typesummary
     $DashTypeGrid.ItemsSource = $typeRows
@@ -649,27 +649,27 @@ function Update-Dashboard {
 
 
 # =============================================================================
-# 6. ZOEKEN OP GROEP OF GEBRUIKER
+# 6. SEARCH BY GROUP OR USER
 # =============================================================================
 
 function Invoke-DirectorySearch {
-    if (-not $script:Connected) { $TxtSearchInfo.Text = 'Meld je eerst aan.'; return }
+    if (-not $script:Connected) { $TxtSearchInfo.Text = 'Sign in first.'; return }
     $text = $TxtDirQuery.Text.Trim()
-    if ($text.Length -lt 2) { $TxtSearchInfo.Text = 'Typ minimaal 2 tekens.'; return }
+    if ($text.Length -lt 2) { $TxtSearchInfo.Text = 'Type at least 2 characters.'; return }
 
     try {
         $window.Cursor = [System.Windows.Input.Cursors]::Wait
-        $TxtSearchInfo.Text = 'Zoeken...'
+        $TxtSearchInfo.Text = 'Searching...'
         Invoke-UiRefresh
         $res = Search-Directory -Text $text
         $LstCandidates.ItemsSource = @($res.Results)
         $SearchGrid.ItemsSource = @()
         if (@($res.Results).Count -eq 0) {
-            $msg = 'Niets gevonden voor "' + $text + '".'
+            $msg = 'Nothing found for "' + $text + '".'
             if ($res.Error) { $msg += ' ' + $res.Error }
             $TxtSearchInfo.Text = $msg
         } else {
-            $TxtSearchInfo.Text = '{0} resultaten. Kies er een in de lijst.' -f @($res.Results).Count
+            $TxtSearchInfo.Text = '{0} results. Pick one in the list.' -f @($res.Results).Count
             if (@($res.Results).Count -eq 1) { $LstCandidates.SelectedIndex = 0 }
         }
     }
@@ -682,7 +682,7 @@ function Invoke-ReverseSearch {
 
     if ($null -eq $Cand) { return }
     if (@($script:AllItems).Count -eq 0) {
-        $TxtSearchInfo.Text = 'Laad eerst de gegevens (knop "Gegevens laden").'
+        $TxtSearchInfo.Text = 'Load the data first (button "Load data").'
         return
     }
 
@@ -697,19 +697,19 @@ function Invoke-ReverseSearch {
                 foreach ($g in @(Get-ParentGroups -Kind $Cand.Kind -Id $Cand.Id)) {
                     $gid = [string]$g.id
                     if ($map.ContainsKey($gid)) { continue }
-                    if ($Cand.Kind -eq 'user') { $map[$gid] = 'Lid van: ' + [string]$g.displayName }
-                    else                       { $map[$gid] = 'Bovenliggende groep: ' + [string]$g.displayName }
+                    if ($Cand.Kind -eq 'user') { $map[$gid] = 'Member of: ' + [string]$g.displayName }
+                    else                       { $map[$gid] = 'Parent group: ' + [string]$g.displayName }
                 }
             }
-            catch { $note = ' Lidmaatschappen konden niet worden opgehaald: ' + (Get-ErrorText $_) }
+            catch { $note = ' Memberships could not be retrieved: ' + (Get-ErrorText $_) }
         }
 
         $rows = @(Find-AssignmentRows -GroupMap $map -IncludeAll ([bool]$ChkAll.IsChecked))
         $SearchGrid.ItemsSource = $rows
         Set-GridColumns $SearchGrid $script:ColSets.search
 
-        $effective = @($rows | Where-Object { $_.Effect -eq 'Van toepassing' }).Count
-        $TxtSearchInfo.Text = ('{0}: {1} assignments gevonden via {2} groep(en); {3} daarvan van toepassing. Dubbelklik voor details.{4}' -f $Cand.Display, $rows.Count, $map.Count, $effective, $note)
+        $effective = @($rows | Where-Object { $_.Effect -eq 'Applies' }).Count
+        $TxtSearchInfo.Text = ('{0}: {1} assignments found via {2} group(s); {3} of them apply. Double-click for details.{4}' -f $Cand.Display, $rows.Count, $map.Count, $effective, $note)
     }
     catch { $TxtSearchInfo.Text = Get-ErrorText $_ }
     finally { $window.Cursor = $null }
@@ -717,10 +717,10 @@ function Invoke-ReverseSearch {
 
 
 # =============================================================================
-# 7. DETAILVENSTERS
+# 7. DETAIL WINDOWS
 # =============================================================================
 
-# Maakt een leeg detailvenster met een TabControl.
+# Creates an empty detail window with a TabControl.
 function New-DetailWindow {
     param([string]$Title, [string]$Heading, [string]$Sub)
 
@@ -756,7 +756,7 @@ function New-DetailWindow {
     return [pscustomobject]@{ Window = $w; Tabs = $w.FindName('DetTabs') }
 }
 
-# Tab met een tabel. Met -Searchable komt er een zoekveld boven.
+# Tab with a table. With $Searchable a search box is added above it.
 function Add-GridTab {
     param($Tabs, [string]$Header, $Rows, $Cols, [bool]$Searchable = $false)
 
@@ -792,7 +792,7 @@ function Update-TabFilter {
     else    { $st.Grid.ItemsSource = $st.All }
 }
 
-# Tab met platte tekst (scripts).
+# Tab with plain text (scripts).
 function Add-TextTab {
     param($Tabs, [string]$Header, [string]$Text)
 
@@ -826,39 +826,38 @@ function Show-ItemDetails {
 
         # 1. Assignments
         $arows = @(foreach ($a in $Item.Assignments) {
-            if ($a.Mode -eq 'Exclude') { $modeText = 'Uitsluiten' } else { $modeText = 'Opnemen' }
-            [pscustomobject]@{ ModeText = $modeText; Target = $a.Name; Filter = $a.FilterName; FilterMode = $a.FilterMode; Intent = $a.Intent }
+            [pscustomobject]@{ ModeText = $a.Mode; Target = $a.Name; Filter = $a.FilterName; FilterMode = $a.FilterMode; Intent = $a.Intent }
         })
-        if ($arows.Count -eq 0) { $arows = @([pscustomobject]@{ ModeText = ''; Target = '(niet toegewezen)'; Filter = ''; FilterMode = ''; Intent = '' }) }
+        if ($arows.Count -eq 0) { $arows = @([pscustomobject]@{ ModeText = ''; Target = '(not assigned)'; Filter = ''; FilterMode = ''; Intent = '' }) }
         Add-GridTab $tabs ('Assignments (' + @($Item.Assignments).Count + ')') $arows $script:ColSets.assignments
 
-        # 2. Algemene eigenschappen
+        # 2. General properties
         $props = @(
-            [pscustomobject]@{ Eigenschap = 'Naam';           Waarde = $Item.Name }
-            [pscustomobject]@{ Eigenschap = 'Type';           Waarde = $Item.Type }
-            [pscustomobject]@{ Eigenschap = 'Subtype';        Waarde = $Item.Subtype }
-            [pscustomobject]@{ Eigenschap = 'Platform';       Waarde = $Item.Platform }
-            [pscustomobject]@{ Eigenschap = 'Beschrijving';   Waarde = $Item.Description }
-            [pscustomobject]@{ Eigenschap = 'Laatst gewijzigd'; Waarde = $Item.Modified }
-            [pscustomobject]@{ Eigenschap = 'Id';             Waarde = $Item.Id }
-            [pscustomobject]@{ Eigenschap = 'Graph-bron';     Waarde = ($Item.Root + '/' + $Item.Path) }
+            [pscustomobject]@{ Property = 'Name';          Value = $Item.Name }
+            [pscustomobject]@{ Property = 'Type';          Value = $Item.Type }
+            [pscustomobject]@{ Property = 'Subtype';       Value = $Item.Subtype }
+            [pscustomobject]@{ Property = 'Platform';      Value = $Item.Platform }
+            [pscustomobject]@{ Property = 'Description';   Value = $Item.Description }
+            [pscustomobject]@{ Property = 'Last modified'; Value = $Item.Modified }
+            [pscustomobject]@{ Property = 'Id';            Value = $Item.Id }
+            [pscustomobject]@{ Property = 'Graph source';  Value = ($Item.Root + '/' + $Item.Path) }
         )
-        Add-GridTab $tabs 'Eigenschappen' $props $script:ColSets.kv
+        Add-GridTab $tabs 'Properties' $props $script:ColSets.kv
 
-        # 3. Instellingen of scriptinhoud (apart afgevangen, zodat een fout de rest niet blokkeert)
+        # 3. Settings or script content (handled separately so an error does not block the rest)
         try {
             switch ($Item.SrcKey) {
                 'sc' {
                     $rows = @(Get-ConfigPolicySettings -Id $Item.Id)
-                    Add-GridTab $tabs ('Instellingen (' + $rows.Count + ')') $rows $script:ColSets.settings $true
+                    Add-GridTab $tabs ('Settings (' + $rows.Count + ')') $rows $script:ColSets.settings $true
                 }
                 'intents' {
                     $rows = @(Get-IntentSettings -Id $Item.Id)
-                    Add-GridTab $tabs ('Instellingen (' + $rows.Count + ')') $rows $script:ColSets.settings $true
+                    Add-GridTab $tabs ('Settings (' + $rows.Count + ')') $rows $script:ColSets.settings $true
                 }
                 'gpo' {
                     $rows = @(Get-GpoSettings -Id $Item.Id)
-                    Add-GridTab $tabs ('Instellingen (' + $rows.Count + ')') $rows $script:ColSets.settings $true
+                    Add-GridTab $tabs ('Settings (' + $rows.Count + ')') $rows $script:ColSets.settings $true
                 }
                 { $_ -eq 'scripts' -or $_ -eq 'shell' -or $_ -eq 'health' } {
                     $texts = Get-ScriptTexts -Item $Item
@@ -866,12 +865,12 @@ function Show-ItemDetails {
                 }
                 default {
                     $rows = @(Get-ItemProperties -Item $Item)
-                    Add-GridTab $tabs ('Instellingen (' + $rows.Count + ')') $rows $script:ColSets.kv $true
+                    Add-GridTab $tabs ('Settings (' + $rows.Count + ')') $rows $script:ColSets.kv $true
                 }
             }
         }
         catch {
-            Add-TextTab $tabs 'Fout bij ophalen' ('De instellingen konden niet worden opgehaald:' + [Environment]::NewLine + (Get-ErrorText $_))
+            Add-TextTab $tabs 'Retrieval error' ('The settings could not be retrieved:' + [Environment]::NewLine + (Get-ErrorText $_))
         }
 
         $dw.Window.Show()
@@ -889,21 +888,21 @@ function Show-DeviceDetails {
         Invoke-UiRefresh
 
         $sub = (@($Device.User, $Device.OS + ' ' + $Device.Version, $Device.Model) | Where-Object { $_ }) -join '  |  '
-        $dw  = New-DetailWindow -Title ('Apparaat - ' + $Device.Name) -Heading $Device.Name -Sub $sub
+        $dw  = New-DetailWindow -Title ('Device - ' + $Device.Name) -Heading $Device.Name -Sub $sub
 
         try {
             $states = @(Get-DeviceStateRows -DeviceId $Device.Id)
-            Add-GridTab $dw.Tabs ('Policy-status (' + $states.Count + ')') $states $script:ColSets.states $true
+            Add-GridTab $dw.Tabs ('Policy status (' + $states.Count + ')') $states $script:ColSets.states $true
         }
-        catch { Add-TextTab $dw.Tabs 'Policy-status' ('Status kon niet worden opgehaald:' + [Environment]::NewLine + (Get-ErrorText $_)) }
+        catch { Add-TextTab $dw.Tabs 'Policy status' ('Status could not be retrieved:' + [Environment]::NewLine + (Get-ErrorText $_)) }
 
         try {
             $obj = Invoke-Graph -Uri ($script:GraphBeta + '/deviceManagement/managedDevices/' + $Device.Id)
             $out = New-Object System.Collections.Generic.List[object]
             ConvertTo-FlatProperties -Obj $obj -Prefix '' -Out $out
-            Add-GridTab $dw.Tabs 'Eigenschappen' @($out.ToArray()) $script:ColSets.kv $true
+            Add-GridTab $dw.Tabs 'Properties' @($out.ToArray()) $script:ColSets.kv $true
         }
-        catch { Add-TextTab $dw.Tabs 'Eigenschappen' ('Eigenschappen konden niet worden opgehaald:' + [Environment]::NewLine + (Get-ErrorText $_)) }
+        catch { Add-TextTab $dw.Tabs 'Properties' ('Properties could not be retrieved:' + [Environment]::NewLine + (Get-ErrorText $_)) }
 
         $dw.Window.Show()
     }
@@ -916,12 +915,12 @@ function Show-DeviceDetails {
 # 8. EXPORT
 # =============================================================================
 
-# Vraagt waar het bestand heen moet. Geeft $null bij annuleren.
+# Asks where the file should go. Returns $null when cancelled.
 function Select-ExportPath {
     param([string]$Name)
 
     $dlg = New-Object Microsoft.Win32.SaveFileDialog
-    $dlg.Filter = 'Excel-werkmap (*.xlsx)|*.xlsx|CSV, puntkomma (*.csv)|*.csv|HTML-rapport (*.html)|*.html'
+    $dlg.Filter = 'Excel workbook (*.xlsx)|*.xlsx|CSV, semicolon (*.csv)|*.csv|HTML report (*.html)|*.html'
     $safe = [regex]::Replace($Name, '[^A-Za-z0-9]+', '_')
     $dlg.FileName = '{0}_{1}' -f $safe, (Get-Date -Format 'yyyyMMdd_HHmm')
     $dlg.InitialDirectory = $script:Root
@@ -931,16 +930,16 @@ function Select-ExportPath {
 
 function Open-ExportedFile {
     param([string]$Path)
-    $ans = [System.Windows.MessageBox]::Show(('Opgeslagen:' + [Environment]::NewLine + $Path + [Environment]::NewLine + [Environment]::NewLine + 'Nu openen?'), 'Export gereed', 'YesNo', 'Question')
+    $ans = [System.Windows.MessageBox]::Show(('Saved:' + [Environment]::NewLine + $Path + [Environment]::NewLine + [Environment]::NewLine + 'Open it now?'), 'Export complete', 'YesNo', 'Question')
     if ($ans -eq 'Yes') { Start-Process -FilePath $Path }
 }
 
-# Exporteert 1 tabel (de zichtbare regels).
+# Exports one table (the visible rows).
 function Invoke-ExportDialog {
     param($Cols, $Rows, [string]$Title)
 
     $data = @($Rows)
-    if ($data.Count -eq 0) { Show-Info 'Er zijn geen regels om te exporteren.'; return }
+    if ($data.Count -eq 0) { Show-Info 'There are no rows to export.'; return }
     $path = Select-ExportPath $Title
     if (-not $path) { return }
 
@@ -952,10 +951,10 @@ function Invoke-ExportDialog {
             default { Export-Xlsx -Path $path -Sheets @(@{ Name = $Title; Cols = $Cols; Rows = $data }) }
         }
     }
-    catch { Show-Error ('Export mislukt: ' + (Get-ErrorText $_)); return }
+    catch { Show-Error ('Export failed: ' + (Get-ErrorText $_)); return }
     finally { $window.Cursor = $null }
 
-    Set-Status ('Geexporteerd: {0} regels naar {1}' -f $data.Count, $path)
+    Set-Status ('Exported {0} rows to {1}' -f $data.Count, $path)
     Open-ExportedFile $path
 }
 
@@ -965,10 +964,10 @@ function Export-CurrentTable {
     Invoke-ExportDialog -Cols $script:CurrentCols -Rows $script:VisibleRows -Title ([string]$v.Title)
 }
 
-# Volledig rapport vanaf het dashboard: Excel (meerdere bladen), HTML of CSV (plat).
+# Full report from the dashboard: Excel (multiple sheets), HTML or CSV (flat).
 function Export-FullReport {
-    if (@($script:AllItems).Count -eq 0) { Show-Info 'Laad eerst de gegevens.'; return }
-    $path = Select-ExportPath 'Intune_rapport'
+    if (@($script:AllItems).Count -eq 0) { Show-Info 'Load the data first.'; return }
+    $path = Select-ExportPath 'Intune_report'
     if (-not $path) { return }
 
     try {
@@ -984,47 +983,47 @@ function Export-FullReport {
             }
             '.html' {
                 $cards = @(
-                    @{ Label = 'Items totaal';     Value = @($script:AllItems).Count }
-                    @{ Label = 'Niet toegewezen';  Value = @($script:AllItems | Where-Object { $_.Status -eq 'Niet toegewezen' }).Count }
-                    @{ Label = 'Aandachtspunten';  Value = $attention.Count }
-                    @{ Label = 'ASR-regels';       Value = @($script:AsrRows).Count }
+                    @{ Label = 'Items total';      Value = @($script:AllItems).Count }
+                    @{ Label = 'Not assigned';     Value = @($script:AllItems | Where-Object { $_.Status -eq 'Not assigned' }).Count }
+                    @{ Label = 'Attention points'; Value = $attention.Count }
+                    @{ Label = 'ASR rules';        Value = @($script:AsrRows).Count }
                 )
                 $sections = @(
                     @{ Title = 'Per type';          Cols = $script:ColSets.typesummary; Rows = $typeRows }
-                    @{ Title = 'Aandachtspunten';   Cols = $script:ColSets.attention;   Rows = $attention }
-                    @{ Title = 'Alle assignments';  Cols = $itemCols;                   Rows = @($script:AllItems) }
+                    @{ Title = 'Attention points';  Cols = $script:ColSets.attention;   Rows = $attention }
+                    @{ Title = 'All assignments';   Cols = $itemCols;                   Rows = @($script:AllItems) }
                 )
-                if (@($script:AsrRows).Count -gt 0) { $sections += @{ Title = 'ASR-regels'; Cols = $script:ColSets.asr; Rows = @($script:AsrRows) } }
-                Export-HtmlReport -Path $path -Title 'Intune assignments - rapport' -Cards $cards -Sections $sections -Subtitle $TxtAccount.Text
+                if (@($script:AsrRows).Count -gt 0) { $sections += @{ Title = 'ASR rules'; Cols = $script:ColSets.asr; Rows = @($script:AsrRows) } }
+                Export-HtmlReport -Path $path -Title 'Intune assignments - report' -Cards $cards -Sections $sections -Subtitle $TxtAccount.Text
             }
             default {
                 $sheets = @(
                     @{ Name = 'Per type';             Cols = $script:ColSets.typesummary; Rows = $typeRows }
-                    @{ Name = 'Aandachtspunten';      Cols = $script:ColSets.attention;   Rows = $attention }
-                    @{ Name = 'Alle items';           Cols = $itemCols;                   Rows = @($script:AllItems) }
-                    @{ Name = 'Assignments (plat)';   Cols = $script:ColSets.flat;        Rows = $flat }
+                    @{ Name = 'Attention points';     Cols = $script:ColSets.attention;   Rows = $attention }
+                    @{ Name = 'All items';            Cols = $itemCols;                   Rows = @($script:AllItems) }
+                    @{ Name = 'Assignments (flat)';   Cols = $script:ColSets.flat;        Rows = $flat }
                 )
-                if (@($script:AsrRows).Count -gt 0) { $sheets += @{ Name = 'ASR-regels'; Cols = $script:ColSets.asr; Rows = @($script:AsrRows) } }
+                if (@($script:AsrRows).Count -gt 0) { $sheets += @{ Name = 'ASR rules'; Cols = $script:ColSets.asr; Rows = @($script:AsrRows) } }
                 Export-Xlsx -Path $path -Sheets $sheets
             }
         }
     }
-    catch { Show-Error ('Export mislukt: ' + (Get-ErrorText $_)); return }
+    catch { Show-Error ('Export failed: ' + (Get-ErrorText $_)); return }
     finally { $window.Cursor = $null }
 
-    Set-Status ('Rapport opgeslagen: ' + $path)
+    Set-Status ('Report saved: ' + $path)
     Open-ExportedFile $path
 }
 
 
 # =============================================================================
-# 9. AANMELDEN EN LADEN
+# 9. SIGNING IN AND LOADING
 # =============================================================================
 
 function Invoke-Login {
     try {
         Set-Busy $true $false
-        Set-Status 'Aanmelden... er opent een inlogvenster.'
+        Set-Status 'Signing in... a sign-in window will open.'
         if (Get-MgContext) { try { Disconnect-MgGraph | Out-Null } catch { } }
         Connect-MgGraph -Scopes $script:Scopes -NoWelcome -ContextScope Process | Out-Null
 
@@ -1036,17 +1035,17 @@ function Invoke-Login {
             if (@($org.value).Count -gt 0 -and $org.value[0].displayName) { $tenant = [string]$org.value[0].displayName }
         } catch { }
         $TxtAccount.Text   = [string]$ctx.Account + '  |  ' + $tenant
-        $BtnLogin.Content  = 'Account wisselen'
+        $BtnLogin.Content  = 'Switch account'
 
         $missing = @($script:Scopes | Where-Object { @($ctx.Scopes) -notcontains $_ })
         if ($missing.Count -gt 0) {
-            Show-Info ('Let op: niet alle gevraagde rechten zijn verleend. Onderdelen die deze rechten nodig hebben kunnen leeg blijven.' + [Environment]::NewLine + [Environment]::NewLine + ($missing -join [Environment]::NewLine))
+            Show-Info ('Note: not all requested permissions were granted. Parts that need these permissions may stay empty.' + [Environment]::NewLine + [Environment]::NewLine + ($missing -join [Environment]::NewLine))
         }
     }
     catch {
         $script:Connected = $false
-        Show-Error ('Aanmelden mislukt: ' + (Get-ErrorText $_))
-        Set-Status 'Aanmelden mislukt.'
+        Show-Error ('Sign-in failed: ' + (Get-ErrorText $_))
+        Set-Status 'Sign-in failed.'
         Set-Busy $false
         return
     }
@@ -1060,17 +1059,17 @@ function Invoke-FullLoad {
         Set-Busy $true
         Get-AllItems
     }
-    catch { Show-Error ('Laden mislukt: ' + (Get-ErrorText $_)) }
+    catch { Show-Error ('Loading failed: ' + (Get-ErrorText $_)) }
     finally { Set-Busy $false }
 
     Update-NavCounts
     if ($script:CurrentView) { Switch-View ([string]$script:CurrentView.Key) }
 
-    if ($script:Cancel) { Set-Status 'Laden geannuleerd; de gegevens zijn mogelijk onvolledig.' }
+    if ($script:Cancel) { Set-Status 'Loading cancelled; the data may be incomplete.' }
     if ($script:LoadErrors.Count -gt 0) {
         $first = @($script:LoadErrors | Select-Object -First 8)
-        $msg = 'Sommige onderdelen konden niet worden opgehaald (meestal ontbrekende rechten of een niet-gelicentieerde functie):' + [Environment]::NewLine + [Environment]::NewLine + ($first -join [Environment]::NewLine)
-        if ($script:LoadErrors.Count -gt 8) { $msg += [Environment]::NewLine + '... en ' + ($script:LoadErrors.Count - 8) + ' meer.' }
-        Show-Info $msg 'Waarschuwing'
+        $msg = 'Some parts could not be retrieved (usually a missing permission or an unlicensed feature):' + [Environment]::NewLine + [Environment]::NewLine + ($first -join [Environment]::NewLine)
+        if ($script:LoadErrors.Count -gt 8) { $msg += [Environment]::NewLine + '... and ' + ($script:LoadErrors.Count - 8) + ' more.' }
+        Show-Info $msg 'Warning'
     }
 }

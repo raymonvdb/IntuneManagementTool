@@ -1,3 +1,3 @@
 @echo off
-rem Start de Intune Management Tool (de console verdwijnt zodra het venster opent)
+rem Starts the Intune Management Tool (the console disappears as soon as the window opens)
 powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File "%~dp0IntuneTool.ps1"

@@ -1,9 +1,9 @@
 # =============================================================================
 # Analysis.ps1
-# Berekeningen op de geladen gegevens: dashboard, aandachtspunten,
-# groepen- en filteroverzicht, plat assignment-overzicht en omgekeerd zoeken.
-# Alles hier werkt op $script:AllItems; er worden geen API-calls gedaan
-# (behalve het optionele tellen van groepsleden).
+# Calculations on the loaded data: dashboard, attention points,
+# group and filter overview, flat assignment overview and reverse search.
+# Everything here works on $script:AllItems; no API calls are made
+# (except the optional counting of group members).
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -17,9 +17,9 @@ function Get-TypeSummaryRows {
         [pscustomobject]@{
             Type        = [string]$_.Name
             Total       = $g.Count
-            Assigned    = @($g | Where-Object { $_.Status -eq 'Toegewezen' }).Count
-            Unassigned  = @($g | Where-Object { $_.Status -eq 'Niet toegewezen' }).Count
-            ExcludeOnly = @($g | Where-Object { $_.Status -eq 'Alleen uitsluiting' }).Count
+            Assigned    = @($g | Where-Object { $_.Status -eq 'Assigned' }).Count
+            Unassigned  = @($g | Where-Object { $_.Status -eq 'Not assigned' }).Count
+            ExcludeOnly = @($g | Where-Object { $_.Status -eq 'Exclusion only' }).Count
             AllDevices  = @($g | Where-Object { @($_.Assignments | Where-Object { $_.Kind -eq 'allDevices' -and $_.Mode -eq 'Include' }).Count -gt 0 }).Count
             AllUsers    = @($g | Where-Object { @($_.Assignments | Where-Object { $_.Kind -eq 'allUsers' -and $_.Mode -eq 'Include' }).Count -gt 0 }).Count
         }
@@ -28,22 +28,22 @@ function Get-TypeSummaryRows {
 
 
 # -----------------------------------------------------------------------------
-# Aandachtspunten
+# Attention points
 # -----------------------------------------------------------------------------
 
-# Zoekt zaken die meestal een opruimactie of controle waard zijn.
+# Looks for things that usually deserve a cleanup or a check.
 function Get-AttentionRows {
     $rows = New-Object System.Collections.Generic.List[object]
 
     foreach ($it in $script:AllItems) {
-        $builtIn = ($it.Subtype -eq 'Microsoft (ingebouwd)')
+        $builtIn = ($it.Subtype -eq 'Microsoft (built-in)')
 
         if (-not $builtIn) {
-            if ($it.Status -eq 'Niet toegewezen') {
-                $rows.Add([pscustomobject]@{ Severity = 'Waarschuwing'; Type = $it.Type; Item = $it.Name; Issue = 'Niet toegewezen aan een groep of "Alle apparaten/gebruikers".'; ItemId = $it.Id })
+            if ($it.Status -eq 'Not assigned') {
+                $rows.Add([pscustomobject]@{ Severity = 'Warning'; Type = $it.Type; Item = $it.Name; Issue = 'Not assigned to any group or to "All devices/users".'; ItemId = $it.Id })
             }
-            elseif ($it.Status -eq 'Alleen uitsluiting') {
-                $rows.Add([pscustomobject]@{ Severity = 'Waarschuwing'; Type = $it.Type; Item = $it.Name; Issue = 'Heeft alleen uitsluitingen en geen include-assignment: geldt voor niemand.'; ItemId = $it.Id })
+            elseif ($it.Status -eq 'Exclusion only') {
+                $rows.Add([pscustomobject]@{ Severity = 'Warning'; Type = $it.Type; Item = $it.Name; Issue = 'Has only exclusions and no include assignment: applies to nobody.'; ItemId = $it.Id })
             }
         }
 
@@ -57,36 +57,36 @@ function Get-AttentionRows {
             $seen[$key] = $true
 
             if ($a.GroupExists -eq $false) {
-                $rows.Add([pscustomobject]@{ Severity = 'Fout'; Type = $it.Type; Item = $it.Name; Issue = ('Verwijst naar een groep die niet meer bestaat: ' + $a.GroupId); ItemId = $it.Id })
+                $rows.Add([pscustomobject]@{ Severity = 'Error'; Type = $it.Type; Item = $it.Name; Issue = ('References a group that no longer exists: ' + $a.GroupId); ItemId = $it.Id })
             }
             elseif ($script:MemberCounts.ContainsKey($a.GroupId) -and $script:MemberCounts[$a.GroupId] -eq 0) {
-                $rows.Add([pscustomobject]@{ Severity = 'Waarschuwing'; Type = $it.Type; Item = $it.Name; Issue = ('Groep "' + $a.Name + '" heeft 0 leden (' + $a.Mode + ').'); ItemId = $it.Id })
+                $rows.Add([pscustomobject]@{ Severity = 'Warning'; Type = $it.Type; Item = $it.Name; Issue = ('Group "' + $a.Name + '" has 0 members (' + $a.Mode + ').'); ItemId = $it.Id })
             }
 
             if ($a.Mode -eq 'Exclude' -and ($includedGroups -contains $a.GroupId)) {
-                $rows.Add([pscustomobject]@{ Severity = 'Fout'; Type = $it.Type; Item = $it.Name; Issue = ('Groep "' + $a.Name + '" staat zowel bij include als exclude.'); ItemId = $it.Id })
+                $rows.Add([pscustomobject]@{ Severity = 'Error'; Type = $it.Type; Item = $it.Name; Issue = ('Group "' + $a.Name + '" is both included and excluded.'); ItemId = $it.Id })
             }
         }
 
         $hasAllDev   = @($it.Assignments | Where-Object { $_.Kind -eq 'allDevices' -and $_.Mode -eq 'Include' }).Count -gt 0
         $hasAllUsers = @($it.Assignments | Where-Object { $_.Kind -eq 'allUsers'   -and $_.Mode -eq 'Include' }).Count -gt 0
         if ($hasAllDev -and $hasAllUsers) {
-            $rows.Add([pscustomobject]@{ Severity = 'Info'; Type = $it.Type; Item = $it.Name; Issue = 'Toegewezen aan zowel "Alle apparaten" als "Alle gebruikers".'; ItemId = $it.Id })
+            $rows.Add([pscustomobject]@{ Severity = 'Info'; Type = $it.Type; Item = $it.Name; Issue = 'Assigned to both "All devices" and "All users".'; ItemId = $it.Id })
         }
     }
 
-    # ASR-regels die in meerdere policies voorkomen met verschillende modi
+    # ASR rules that occur in multiple policies with different modes
     foreach ($g in @($script:AsrRows | Where-Object { $_.Conflict -like 'CONFLICT*' } | Group-Object DefinitionId)) {
         $first = $g.Group[0]
-        $rows.Add([pscustomobject]@{ Severity = 'Waarschuwing'; Type = 'ASR'; Item = $first.Rule; Issue = $first.Conflict; ItemId = $first.PolicyId })
+        $rows.Add([pscustomobject]@{ Severity = 'Warning'; Type = 'ASR'; Item = $first.Rule; Issue = $first.Conflict; ItemId = $first.PolicyId })
     }
 
-    return @($rows.ToArray() | Sort-Object @{ Expression = { switch ($_.Severity) { 'Fout' { 0 } 'Waarschuwing' { 1 } default { 2 } } } }, Type, Item)
+    return @($rows.ToArray() | Sort-Object @{ Expression = { switch ($_.Severity) { 'Error' { 0 } 'Warning' { 1 } default { 2 } } } }, Type, Item)
 }
 
 
 # -----------------------------------------------------------------------------
-# Groepen in gebruik
+# Groups in use
 # -----------------------------------------------------------------------------
 
 function Get-GroupRows {
@@ -95,8 +95,8 @@ function Get-GroupRows {
     foreach ($it in $script:AllItems) {
         foreach ($a in $it.Assignments) {
             if     ($a.Kind -eq 'group')      { $key = $a.GroupId;      $name = $a.Name }
-            elseif ($a.Kind -eq 'allDevices') { $key = 'ALL_DEVICES';   $name = 'Alle apparaten' }
-            elseif ($a.Kind -eq 'allUsers')   { $key = 'ALL_USERS';     $name = 'Alle gebruikers' }
+            elseif ($a.Kind -eq 'allDevices') { $key = 'ALL_DEVICES';   $name = 'All devices' }
+            elseif ($a.Kind -eq 'allUsers')   { $key = 'ALL_USERS';     $name = 'All users' }
             else { continue }
 
             if (-not $map.ContainsKey($key)) {
@@ -112,7 +112,7 @@ function Get-GroupRows {
         $dyn = ''
         $members = $null
         if ($script:GroupCache.ContainsKey($g.GroupId)) {
-            if ($script:GroupCache[$g.GroupId].Dynamic) { $dyn = 'Ja' } else { $dyn = 'Nee' }
+            if ($script:GroupCache[$g.GroupId].Dynamic) { $dyn = 'Yes' } else { $dyn = 'No' }
         }
         if ($script:MemberCounts.ContainsKey($g.GroupId)) { $members = $script:MemberCounts[$g.GroupId] }
         [pscustomobject]@{
@@ -128,7 +128,7 @@ function Get-GroupRows {
     return @($rows | Sort-Object Name)
 }
 
-# Telt de leden van alle groepen die in assignments voorkomen.
+# Counts the members of all groups that occur in assignments.
 function Invoke-MemberCountCheck {
     $ids = New-Object System.Collections.Generic.List[string]
     foreach ($it in $script:AllItems) {
@@ -143,7 +143,7 @@ function Invoke-MemberCountCheck {
         if ($script:Cancel) { break }
         $i++
         Set-Progress $i $todo.Count
-        if (($i % 5) -eq 1) { Set-Status ('Ledenaantal ophalen {0}/{1}...' -f $i, $todo.Count) }
+        if (($i % 5) -eq 1) { Set-Status ('Getting member counts {0}/{1}...' -f $i, $todo.Count) }
         try { $script:MemberCounts[$id] = Get-GroupMemberCount -Id $id }
         catch { $failed++ }
     }
@@ -182,19 +182,18 @@ function Get-FilterRows {
 
 
 # -----------------------------------------------------------------------------
-# Plat overzicht: 1 regel per assignment (handig voor draaitabellen in Excel)
+# Flat overview: one row per assignment (handy for pivot tables in Excel)
 # -----------------------------------------------------------------------------
 
 function Get-FlatAssignmentRows {
     $rows = New-Object System.Collections.Generic.List[object]
     foreach ($it in $script:AllItems) {
         if (@($it.Assignments).Count -eq 0) {
-            $rows.Add([pscustomobject]@{ Type = $it.Type; Subtype = $it.Subtype; Platform = $it.Platform; Name = $it.Name; Mode = ''; Target = '(niet toegewezen)'; Filter = ''; FilterMode = ''; Intent = '' })
+            $rows.Add([pscustomobject]@{ Type = $it.Type; Subtype = $it.Subtype; Platform = $it.Platform; Name = $it.Name; Mode = ''; Target = '(not assigned)'; Filter = ''; FilterMode = ''; Intent = '' })
             continue
         }
         foreach ($a in $it.Assignments) {
-            if ($a.Mode -eq 'Exclude') { $modeText = 'Uitsluiten' } else { $modeText = 'Opnemen' }
-            $rows.Add([pscustomobject]@{ Type = $it.Type; Subtype = $it.Subtype; Platform = $it.Platform; Name = $it.Name; Mode = $modeText; Target = $a.Name; Filter = $a.FilterName; FilterMode = $a.FilterMode; Intent = $a.Intent })
+            $rows.Add([pscustomobject]@{ Type = $it.Type; Subtype = $it.Subtype; Platform = $it.Platform; Name = $it.Name; Mode = $a.Mode; Target = $a.Name; Filter = $a.FilterName; FilterMode = $a.FilterMode; Intent = $a.Intent })
         }
     }
     return $rows.ToArray()
@@ -202,10 +201,10 @@ function Get-FlatAssignmentRows {
 
 
 # -----------------------------------------------------------------------------
-# Omgekeerd zoeken: wat is er aan deze groep/gebruiker toegewezen?
+# Reverse search: what is assigned to this group/user?
 # -----------------------------------------------------------------------------
 
-# GroupMap: groupId -> tekst waarmee de relatie wordt omschreven ("Via")
+# GroupMap: groupId -> text that describes the relationship ("Via")
 function Find-AssignmentRows {
     param([hashtable]$GroupMap, [bool]$IncludeAll)
 
@@ -214,21 +213,21 @@ function Find-AssignmentRows {
         foreach ($a in $it.Assignments) {
             $via = $null
             if     ($a.Kind -eq 'group' -and $GroupMap.ContainsKey($a.GroupId)) { $via = [string]$GroupMap[$a.GroupId] }
-            elseif ($IncludeAll -and $a.Kind -eq 'allUsers')                    { $via = 'Alle gebruikers' }
-            elseif ($IncludeAll -and $a.Kind -eq 'allDevices')                  { $via = 'Alle apparaten' }
+            elseif ($IncludeAll -and $a.Kind -eq 'allUsers')                    { $via = 'All users' }
+            elseif ($IncludeAll -and $a.Kind -eq 'allDevices')                  { $via = 'All devices' }
             if ($null -ne $via) { $tmp.Add([pscustomobject]@{ Item = $it; A = $a; Via = $via }) }
         }
     }
 
-    # Uitsluiting wint van opname binnen hetzelfde item
+    # Exclusion wins over inclusion within the same item
     $excluded = @{}
     foreach ($t in $tmp) { if ($t.A.Mode -eq 'Exclude') { $excluded[$t.Item.SrcKey + '|' + $t.Item.Id] = $true } }
 
     $rows = foreach ($t in $tmp) {
         $isExcluded = $excluded.ContainsKey($t.Item.SrcKey + '|' + $t.Item.Id)
-        if ($t.A.Mode -eq 'Exclude')  { $mode = 'Uitsluiten'; $effect = 'Uitgesloten' }
-        elseif ($isExcluded)          { $mode = 'Opnemen';    $effect = 'Uitgesloten (exclude wint)' }
-        else                          { $mode = 'Opnemen';    $effect = 'Van toepassing' }
+        if ($t.A.Mode -eq 'Exclude') { $effect = 'Excluded' }
+        elseif ($isExcluded)         { $effect = 'Excluded (exclude wins)' }
+        else                         { $effect = 'Applies' }
 
         $detail = ''
         if ($t.A.FilterName) { $detail += 'filter: {0} ({1})  ' -f $t.A.FilterName, $t.A.FilterMode }
@@ -239,7 +238,7 @@ function Find-AssignmentRows {
             Type    = $t.Item.Type
             Subtype = $t.Item.Subtype
             Via     = $t.Via
-            Mode    = $mode
+            Mode    = $t.A.Mode
             Effect  = $effect
             Detail  = $detail.Trim()
             Item    = $t.Item

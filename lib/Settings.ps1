@@ -1,14 +1,14 @@
 # =============================================================================
 # Settings.ps1
-# Instellingen van policies leesbaar maken: Settings catalog, endpoint
-# security intents, administrative templates, scripts en ASR-regels.
+# Making policy settings readable: Settings catalog, endpoint security
+# intents, administrative templates, scripts and ASR rules.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# Namen en waarden vriendelijk maken
+# Making names and values friendly
 # -----------------------------------------------------------------------------
 
-# Valt terug op een opgeschoonde definitie-ID als Graph geen displayName geeft.
+# Falls back to a cleaned-up definition ID when Graph gives no displayName.
 function Get-PrettyId {
     param([string]$Id)
     $s = $Id -replace '^(device|user)_vendor_msft_(policy_config_)?', ''
@@ -22,7 +22,7 @@ function Get-SettingName {
     return (Get-PrettyId $Id)
 }
 
-# Vertaalt de ruwe keuzewaarde (bijv. '..._block') naar de weergavenaam (bijv. 'Block').
+# Translates the raw choice value (e.g. '..._block') into the display name (e.g. 'Block').
 function Get-ChoiceText {
     param([string]$DefId, [string]$Value, $Defs)
 
@@ -42,8 +42,8 @@ function Get-ChoiceText {
 # Settings catalog (configurationPolicies)
 # -----------------------------------------------------------------------------
 
-# Loopt recursief door een settingInstance en voegt per instelling 1 regel toe.
-# Level bepaalt de inspringing van geneste instellingen.
+# Recursively walks a settingInstance and adds one row per setting.
+# Level determines the indentation of nested settings.
 function Add-SettingRows {
     param($Instance, $Defs, $Out, [int]$Level = 0)
 
@@ -57,45 +57,45 @@ function Add-SettingRows {
     if ($type -like '*ChoiceSettingCollectionInstance') {
         $vals  = @($Instance.choiceSettingCollectionValue | Where-Object { $null -ne $_ })
         $texts = @($vals | ForEach-Object { Get-ChoiceText $id ([string]$_.value) $Defs })
-        $Out.Add([pscustomobject]@{ DefinitionId = $id; Name = $name; Level = $Level; Instelling = $pad + $name; Waarde = ($texts -join '; ') })
+        $Out.Add([pscustomobject]@{ DefinitionId = $id; Name = $name; Level = $Level; Setting = $pad + $name; Value = ($texts -join '; ') })
         foreach ($v in $vals) {
             foreach ($c in @($v.children | Where-Object { $null -ne $_ })) { Add-SettingRows -Instance $c -Defs $Defs -Out $Out -Level ($Level + 1) }
         }
     }
     elseif ($type -like '*ChoiceSettingInstance') {
         $v = $Instance.choiceSettingValue
-        $Out.Add([pscustomobject]@{ DefinitionId = $id; Name = $name; Level = $Level; Instelling = $pad + $name; Waarde = (Get-ChoiceText $id ([string]$v.value) $Defs) })
+        $Out.Add([pscustomobject]@{ DefinitionId = $id; Name = $name; Level = $Level; Setting = $pad + $name; Value = (Get-ChoiceText $id ([string]$v.value) $Defs) })
         foreach ($c in @($v.children | Where-Object { $null -ne $_ })) { Add-SettingRows -Instance $c -Defs $Defs -Out $Out -Level ($Level + 1) }
     }
     elseif ($type -like '*SimpleSettingCollectionInstance') {
         $vals = @($Instance.simpleSettingCollectionValue | Where-Object { $null -ne $_ } | ForEach-Object { [string]$_.value })
-        $Out.Add([pscustomobject]@{ DefinitionId = $id; Name = $name; Level = $Level; Instelling = $pad + $name; Waarde = ($vals -join '; ') })
+        $Out.Add([pscustomobject]@{ DefinitionId = $id; Name = $name; Level = $Level; Setting = $pad + $name; Value = ($vals -join '; ') })
     }
     elseif ($type -like '*SimpleSettingInstance') {
         $v = $Instance.simpleSettingValue
-        if (([string]$v.'@odata.type') -like '*Secret*') { $text = '(versleuteld)' } else { $text = [string]$v.value }
-        $Out.Add([pscustomobject]@{ DefinitionId = $id; Name = $name; Level = $Level; Instelling = $pad + $name; Waarde = $text })
+        if (([string]$v.'@odata.type') -like '*Secret*') { $text = '(encrypted)' } else { $text = [string]$v.value }
+        $Out.Add([pscustomobject]@{ DefinitionId = $id; Name = $name; Level = $Level; Setting = $pad + $name; Value = $text })
     }
     elseif ($type -like '*GroupSettingCollectionInstance') {
-        $Out.Add([pscustomobject]@{ DefinitionId = $id; Name = $name; Level = $Level; Instelling = $pad + $name; Waarde = '' })
+        $Out.Add([pscustomobject]@{ DefinitionId = $id; Name = $name; Level = $Level; Setting = $pad + $name; Value = '' })
         foreach ($item in @($Instance.groupSettingCollectionValue | Where-Object { $null -ne $_ })) {
             foreach ($c in @($item.children | Where-Object { $null -ne $_ })) { Add-SettingRows -Instance $c -Defs $Defs -Out $Out -Level ($Level + 1) }
         }
     }
     elseif ($type -like '*GroupSettingInstance') {
-        $Out.Add([pscustomobject]@{ DefinitionId = $id; Name = $name; Level = $Level; Instelling = $pad + $name; Waarde = '' })
+        $Out.Add([pscustomobject]@{ DefinitionId = $id; Name = $name; Level = $Level; Setting = $pad + $name; Value = '' })
         foreach ($c in @($Instance.groupSettingValue.children | Where-Object { $null -ne $_ })) {
             Add-SettingRows -Instance $c -Defs $Defs -Out $Out -Level ($Level + 1)
         }
     }
     else {
-        $Out.Add([pscustomobject]@{ DefinitionId = $id; Name = $name; Level = $Level; Instelling = $pad + $name; Waarde = ('(' + $type + ')') })
+        $Out.Add([pscustomobject]@{ DefinitionId = $id; Name = $name; Level = $Level; Setting = $pad + $name; Value = ('(' + $type + ')') })
     }
 }
 
-# Haalt alle instellingen van een Settings catalog-policy op. Met
-# $expand=settingDefinitions krijgen we de echte namen uit Intune; lukt dat niet,
-# dan tonen we opgeschoonde ID's.
+# Retrieves all settings of a Settings catalog policy. With
+# $expand=settingDefinitions we get the real names from Intune; if that fails
+# we show cleaned-up IDs instead.
 function Get-ConfigPolicySettings {
     param([string]$Id)
 
@@ -117,7 +117,7 @@ function Get-ConfigPolicySettings {
 
 
 # -----------------------------------------------------------------------------
-# Endpoint security intents (oude stijl) en administrative templates
+# Endpoint security intents (old style) and administrative templates
 # -----------------------------------------------------------------------------
 
 function Get-IntentSettings {
@@ -134,7 +134,7 @@ function Get-IntentSettings {
         $names = @($s.PSObject.Properties.Name)
         if (($names -contains 'value') -and ($null -ne $s.value)) { $val = [string]$s.value } else { $val = [string]$s.valueJson }
 
-        $out.Add([pscustomobject]@{ DefinitionId = $defId; Name = $name; Level = 0; Instelling = $name; Waarde = $val })
+        $out.Add([pscustomobject]@{ DefinitionId = $defId; Name = $name; Level = 0; Setting = $name; Value = $val })
     }
     return $out.ToArray()
 }
@@ -147,7 +147,7 @@ function Get-GpoSettings {
     $out  = New-Object System.Collections.Generic.List[object]
 
     foreach ($dv in $dvs) {
-        if ($dv.enabled) { $state = 'Ingeschakeld' } else { $state = 'Uitgeschakeld' }
+        if ($dv.enabled) { $state = 'Enabled' } else { $state = 'Disabled' }
         $vals = ''
         try {
             $pvs = @(Invoke-GraphAll -Uri ($base + '/' + $dv.id + '/presentationValues'))
@@ -166,17 +166,17 @@ function Get-GpoSettings {
         if ($dv.definition.categoryPath) { $name += '  (' + [string]$dv.definition.categoryPath + ')' }
         $text = $state
         if ($vals) { $text += ' - ' + $vals }
-        $out.Add([pscustomobject]@{ DefinitionId = [string]$dv.id; Name = $name; Level = 0; Instelling = $name; Waarde = $text })
+        $out.Add([pscustomobject]@{ DefinitionId = [string]$dv.id; Name = $name; Level = 0; Setting = $name; Value = $text })
     }
     return $out.ToArray()
 }
 
 
 # -----------------------------------------------------------------------------
-# Generieke eigenschappen (voor device configuration, compliance, apps, ...)
+# Generic properties (for device configuration, compliance, apps, ...)
 # -----------------------------------------------------------------------------
 
-# Maakt van een willekeurig object een platte lijst "Eigenschap = Waarde".
+# Turns any object into a flat list of "Property = Value".
 function ConvertTo-FlatProperties {
     param($Obj, [string]$Prefix, $Out, [int]$Depth = 0)
 
@@ -191,7 +191,7 @@ function ConvertTo-FlatProperties {
         if ($Prefix) { $key = $Prefix + '.' + $pname } else { $key = $pname }
 
         if ($val -is [string] -or $val -is [ValueType]) {
-            if ([string]$val -ne '') { $Out.Add([pscustomobject]@{ Eigenschap = $key; Waarde = [string]$val }) }
+            if ([string]$val -ne '') { $Out.Add([pscustomobject]@{ Property = $key; Value = [string]$val }) }
         }
         elseif ($val -is [System.Collections.IEnumerable]) {
             $arr = @($val)
@@ -199,7 +199,7 @@ function ConvertTo-FlatProperties {
             foreach ($e in $arr) {
                 $ekey = '{0}[{1}]' -f $key, $i
                 if ($e -is [string] -or $e -is [ValueType]) {
-                    $Out.Add([pscustomobject]@{ Eigenschap = $ekey; Waarde = [string]$e })
+                    $Out.Add([pscustomobject]@{ Property = $ekey; Value = [string]$e })
                 } else {
                     ConvertTo-FlatProperties -Obj $e -Prefix $ekey -Out $Out -Depth ($Depth + 1)
                 }
@@ -212,7 +212,7 @@ function ConvertTo-FlatProperties {
     }
 }
 
-# Haalt 1 item volledig op en geeft de platte eigenschappen terug.
+# Retrieves one item in full and returns its flat properties.
 function Get-ItemProperties {
     param($Item)
     $obj = Invoke-Graph -Uri ('{0}/{1}/{2}/{3}' -f $script:GraphBeta, $Item.Root, $Item.Path, $Item.Id)
@@ -223,7 +223,7 @@ function Get-ItemProperties {
 
 
 # -----------------------------------------------------------------------------
-# Script-inhoud (platform scripts, shell scripts, remediations)
+# Script content (platform scripts, shell scripts, remediations)
 # -----------------------------------------------------------------------------
 
 function ConvertFrom-Base64Text {
@@ -234,7 +234,7 @@ function ConvertFrom-Base64Text {
     return $text.TrimStart([char]0xFEFF)
 }
 
-# Geeft een geordende hashtable terug: tabnaam -> scripttekst
+# Returns an ordered hashtable: tab name -> script text
 function Get-ScriptTexts {
     param($Item)
 
@@ -253,12 +253,12 @@ function Get-ScriptTexts {
 
 
 # -----------------------------------------------------------------------------
-# ASR-regels (Attack Surface Reduction)
+# ASR rules (Attack Surface Reduction)
 # -----------------------------------------------------------------------------
 
-# Verzamelt per ASR-policy alle regels met hun modus (Block/Audit/Warn/...).
-# Standaard alleen de endpoint security ASR-policies. Met -ScanAllCatalog
-# worden ook alle Settings catalog-profielen doorzocht op ASR-regels.
+# Collects all rules with their mode (Block/Audit/Warn/...) per ASR policy.
+# By default only the endpoint security ASR policies. With -ScanAllCatalog
+# all Settings catalog profiles are also searched for ASR rules.
 function Get-AsrRows {
     param([bool]$ScanAllCatalog = $false)
 
@@ -272,7 +272,7 @@ function Get-AsrRows {
         if ($script:Cancel) { break }
         $n++
         Set-Progress $n $cands.Count
-        Set-Status ('ASR-regels uitlezen {0}/{1}: {2}' -f $n, $cands.Count, $it.Name)
+        Set-Status ('Reading ASR rules {0}/{1}: {2}' -f $n, $cands.Count, $it.Name)
 
         try {
             if ($it.SrcKey -eq 'sc') {
@@ -284,12 +284,12 @@ function Get-AsrRows {
             else { $settings = @() }
 
             foreach ($s in $settings) {
-                # Containerregels zonder waarde (groepen) overslaan
-                if ($s.Waarde -eq '' -and $s.Level -eq 0 -and $it.SrcKey -eq 'sc') { continue }
+                # Skip container rows without a value (groups)
+                if ($s.Value -eq '' -and $s.Level -eq 0 -and $it.SrcKey -eq 'sc') { continue }
                 $rows.Add([pscustomobject]@{
                     Policy       = $it.Name
                     Rule         = $s.Name
-                    Mode         = $s.Waarde
+                    Mode         = $s.Value
                     Include      = $it.Include
                     Exclude      = $it.Exclude
                     Status       = $it.Status
@@ -305,15 +305,15 @@ function Get-AsrRows {
         }
     }
 
-    # Dezelfde regel in meerdere policies? Markeer overlap en conflicten.
+    # Same rule in multiple policies? Mark overlaps and conflicts.
     foreach ($g in @($rows.ToArray() | Group-Object DefinitionId)) {
         if ($g.Name -match 'exclusion') { continue }
         $policies = @($g.Group | Select-Object -ExpandProperty PolicyId -Unique)
         if ($policies.Count -le 1) { continue }
         $modes   = @($g.Group | Select-Object -ExpandProperty Mode -Unique)
         $details = (@($g.Group | ForEach-Object { '{0}: {1}' -f $_.Policy, $_.Mode }) -join ' | ')
-        if ($modes.Count -gt 1) { $text = 'CONFLICT - verschillende modi: ' + $details }
-        else                    { $text = 'Overlap - zelfde modus in ' + $policies.Count + ' policies: ' + $details }
+        if ($modes.Count -gt 1) { $text = 'CONFLICT - different modes: ' + $details }
+        else                    { $text = 'Overlap - same mode in ' + $policies.Count + ' policies: ' + $details }
         foreach ($r in $g.Group) { $r.Conflict = $text }
     }
 

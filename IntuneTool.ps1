@@ -1,34 +1,34 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Intune Management Tool - alleen-lezen overzicht van Intune-configuratie en assignments.
+    Intune Management Tool - read-only overview of Intune configuration and assignments.
 
 .DESCRIPTION
-    Meld je aan met je Microsoft-account en bekijk in een Intune-achtige interface:
+    Sign in with your Microsoft account and browse, in an Intune-like interface:
       - configuration profiles, compliance, Settings catalog, scripts, remediations
-      - endpoint security (incl. ASR-regels met conflictdetectie)
-      - apps, app protection en app configuration
-      - Autopilot, enrollment en Windows updates
-      - groepen, assignment filters en apparaten
-    Per item zie je de include- en exclude-assignments. Je kunt zoeken per groep of
-    gebruiker, details en instellingen bekijken en exporteren naar Excel, CSV en HTML.
+      - endpoint security (incl. ASR rules with conflict detection)
+      - apps, app protection and app configuration
+      - Autopilot, enrollment and Windows updates
+      - groups, assignment filters and devices
+    For every item you see the include and exclude assignments. You can search by
+    group or user, view details and settings, and export to Excel, CSV and HTML.
 
-    De tool leest alleen; er wordt niets in Intune gewijzigd.
+    The tool only reads; nothing is changed in Intune.
 
 .NOTES
-    Opbouw:
-      IntuneTool.ps1      dit bestand: opstarten en events koppelen
-      lib\Graph.ps1       Microsoft Graph, bronnen, groepen en filters
-      lib\Settings.ps1    instellingen, scripts en ASR-regels uitlezen
-      lib\Analysis.ps1    dashboard, aandachtspunten, zoeken
-      lib\Export.ps1      xlsx, csv en html
-      lib\Ui.ps1          alles voor de interface
-      ui\*.xaml           layout en stijlen
-    Starten: dubbelklik op Start-IntuneTool.bat
+    Structure:
+      IntuneTool.ps1      this file: startup and wiring up the events
+      lib\Graph.ps1       Microsoft Graph, sources, groups and filters
+      lib\Settings.ps1    reading settings, scripts and ASR rules
+      lib\Analysis.ps1    dashboard, attention points, search
+      lib\Export.ps1      xlsx, csv and html
+      lib\Ui.ps1          everything for the interface
+      ui\*.xaml           layout and styles
+    Start: double-click Start-IntuneTool.bat
 #>
 
-# WPF (de GUI) vereist een STA-thread. Als het script in een MTA-shell start,
-# herstarten we zichzelf met -STA.
+# WPF (the GUI) requires an STA thread. If the script starts in an MTA shell,
+# it restarts itself with -STA.
 if ([System.Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') {
     & powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File $PSCommandPath
     exit
@@ -39,42 +39,42 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
 try {
     # -------------------------------------------------------------------------
-    # 1. Onderdelen laden
+    # 1. Load the components
     # -------------------------------------------------------------------------
     $script:Root = $PSScriptRoot
     foreach ($lib in 'Graph', 'Settings', 'Analysis', 'Export', 'Ui') {
         . (Join-Path $PSScriptRoot ('lib\' + $lib + '.ps1'))
     }
 
-    # Microsoft Graph-rechten (allemaal alleen-lezen)
+    # Microsoft Graph permissions (all read-only)
     $script:Scopes = @(
-        'DeviceManagementConfiguration.Read.All',   # profielen, compliance, scripts, endpoint security, filters
+        'DeviceManagementConfiguration.Read.All',   # profiles, compliance, scripts, endpoint security, filters
         'DeviceManagementApps.Read.All',            # apps, app protection, app configuration
-        'DeviceManagementServiceConfig.Read.All',   # Autopilot en enrollment
-        'DeviceManagementManagedDevices.Read.All',  # apparaten en hun policy-status
-        'Group.Read.All',                           # groepsnamen
-        'GroupMember.Read.All',                     # ledenaantal en lidmaatschappen
-        'User.Read.All'                             # gebruikers zoeken
+        'DeviceManagementServiceConfig.Read.All',   # Autopilot and enrollment
+        'DeviceManagementManagedDevices.Read.All',  # devices and their policy status
+        'Group.Read.All',                           # group names
+        'GroupMember.Read.All',                     # member counts and memberships
+        'User.Read.All'                             # searching for users
     )
 
-    # De Graph-module controleren
+    # Check the Graph module
     if (-not (Get-Module -ListAvailable -Name Microsoft.Graph.Authentication)) {
         $answer = [System.Windows.MessageBox]::Show(
-            "De module Microsoft.Graph.Authentication is nodig.`n`nNu installeren voor je eigen account?",
-            'Module ontbreekt', 'YesNo', 'Question')
+            "The module Microsoft.Graph.Authentication is required.`n`nInstall it now for your own account?",
+            'Module missing', 'YesNo', 'Question')
         if ($answer -ne 'Yes') { return }
         Install-Module Microsoft.Graph.Authentication -Scope CurrentUser -Force
     }
     Import-Module Microsoft.Graph.Authentication
 
     # -------------------------------------------------------------------------
-    # 2. Venster opbouwen uit XAML
+    # 2. Build the window from XAML
     # -------------------------------------------------------------------------
     $script:ResourceXaml = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot 'ui\Resources.xaml'))
     $mainXaml = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot 'ui\MainWindow.xaml')).Replace('@@RESOURCES@@', $script:ResourceXaml)
     $window = [System.Windows.Markup.XamlReader]::Parse($mainXaml)
 
-    # Benoemde elementen als variabelen beschikbaar maken ($Grid, $NavPanel, ...)
+    # Make named elements available as variables ($Grid, $NavPanel, ...)
     $elementNames = @(
         'TxtAccount', 'BtnLogin', 'BtnLoad', 'NavPanel',
         'PanelDashboard', 'TxtDashHint', 'CardPanel', 'DashTypeGrid', 'DashAttentionGrid', 'BtnDashExport',
@@ -86,12 +86,12 @@ try {
     )
     foreach ($name in $elementNames) {
         $el = $window.FindName($name)
-        if ($null -eq $el) { throw ('Element "' + $name + '" ontbreekt in MainWindow.xaml') }
+        if ($null -eq $el) { throw ('Element "' + $name + '" is missing in MainWindow.xaml') }
         Set-Variable -Name $name -Scope Script -Value $el
     }
 
     # -------------------------------------------------------------------------
-    # 3. Linker navigatie opbouwen (zoals in Intune)
+    # 3. Build the left navigation (like Intune)
     # -------------------------------------------------------------------------
     $lastGroup = ''
     foreach ($view in $script:Views) {
@@ -116,13 +116,13 @@ try {
     $CmbPlatform.SelectedIndex = 0
 
     # -------------------------------------------------------------------------
-    # 4. Events koppelen (de logica zelf staat in lib\Ui.ps1)
+    # 4. Wire up the events (the logic itself lives in lib\Ui.ps1)
     # -------------------------------------------------------------------------
     $BtnLogin.Add_Click({ Invoke-Login })
     $BtnLoad.Add_Click({ Invoke-FullLoad })
-    $BtnCancel.Add_Click({ $script:Cancel = $true; Set-Status 'Annuleren...' })
+    $BtnCancel.Add_Click({ $script:Cancel = $true; Set-Status 'Cancelling...' })
 
-    # Tabelweergave
+    # Table view
     $TxtSearch.Add_TextChanged({ Update-Table })
     $CmbPlatform.Add_SelectionChanged({ Update-Table })
     $ChkUnassigned.Add_Click({ Update-Table })
@@ -142,7 +142,7 @@ try {
         if ($null -ne $row) { Open-ItemById ([string]$row.ItemId) }
     })
 
-    # Zoeken per groep/gebruiker
+    # Search by group/user
     $BtnSearch.Add_Click({ Invoke-DirectorySearch })
     $TxtDirQuery.Add_KeyDown({ param($sender, $e) if ($e.Key -eq 'Return') { Invoke-DirectorySearch } })
     $LstCandidates.Add_SelectionChanged({ if ($LstCandidates.SelectedItem) { Invoke-ReverseSearch $LstCandidates.SelectedItem } })
@@ -155,23 +155,23 @@ try {
     })
     $BtnSearchExport.Add_Click({
         $data = @($SearchGrid.ItemsSource | Where-Object { $null -ne $_ })
-        Invoke-ExportDialog -Cols $script:ColSets.search -Rows $data -Title 'Zoekresultaat'
+        Invoke-ExportDialog -Cols $script:ColSets.search -Rows $data -Title 'Search results'
     })
 
-    # Onverwachte fouten in handlers netjes melden in plaats van crashen
+    # Report unexpected errors in handlers nicely instead of crashing
     $window.Dispatcher.Add_UnhandledException({
         param($sender, $e)
-        Show-Error ('Onverwachte fout: ' + $e.Exception.Message)
+        Show-Error ('Unexpected error: ' + $e.Exception.Message)
         $e.Handled = $true
     })
 
     # -------------------------------------------------------------------------
-    # 5. Starten
+    # 5. Start
     # -------------------------------------------------------------------------
     $script:NavButtons['dashboard'].IsChecked = $true
-    Set-Status 'Meld je aan om te beginnen.'
+    Set-Status 'Sign in to get started.'
     [void]$window.ShowDialog()
 }
 catch {
-    [System.Windows.MessageBox]::Show(('De tool kon niet starten:' + [Environment]::NewLine + $_.Exception.Message), 'Intune Management Tool', 'OK', 'Error') | Out-Null
+    [System.Windows.MessageBox]::Show(('The tool could not start:' + [Environment]::NewLine + $_.Exception.Message), 'Intune Management Tool', 'OK', 'Error') | Out-Null
 }

@@ -1,25 +1,25 @@
 # =============================================================================
 # Graph.ps1
-# Alles rond Microsoft Graph: aanroepen, bronnen, groepen/filters en het
-# ophalen van alle Intune-items met hun assignments.
+# Everything related to Microsoft Graph: calls, sources, groups/filters and
+# retrieving all Intune items with their assignments.
 #
-# Deze file wordt met dot-sourcing geladen door IntuneTool.ps1, dus de
-# $script:-variabelen hieronder zijn voor het hele programma beschikbaar.
+# This file is dot-sourced by IntuneTool.ps1, so the $script: variables below
+# are available to the whole program.
 # =============================================================================
 
 $script:GraphBeta = 'https://graph.microsoft.com/beta'
 $script:GraphV1   = 'https://graph.microsoft.com/v1.0'
 
-# Caches, zodat we elke groep/filter/template maar 1x ophalen
+# Caches, so every group/filter/template is fetched only once
 $script:GroupCache   = @{}   # groupId  -> pscustomobject (Id, Name, Dynamic, Exists)
-$script:FilterCache  = @{}   # filterId -> filterobject uit Graph
-$script:MemberCounts = @{}   # groupId  -> aantal leden (alleen na "Ledenaantal ophalen")
-$script:TemplateMap  = @{}   # templateId -> template (voor endpoint security intents)
+$script:FilterCache  = @{}   # filterId -> filter object from Graph
+$script:MemberCounts = @{}   # groupId  -> member count (only after "Get member counts")
+$script:TemplateMap  = @{}   # templateId -> template (for endpoint security intents)
 
-# Resultaten
-$script:AllItems  = @()      # alle policies/scripts/apps, 1 object per item
-$script:AsrRows   = @()      # ASR-regels per policy
-$script:Devices   = $null    # beheerde apparaten (wordt pas geladen als je die pagina opent)
+# Results
+$script:AllItems  = @()      # all policies/scripts/apps, one object per item
+$script:AsrRows   = @()      # ASR rules per policy
+$script:Devices   = $null    # managed devices (only loaded when you open that page)
 
 $script:LoadErrors = New-Object System.Collections.Generic.List[string]
 $script:Cancel     = $false
@@ -27,7 +27,7 @@ $script:Connected  = $false
 
 
 # =============================================================================
-# 1. BASISFUNCTIES
+# 1. BASIC FUNCTIONS
 # =============================================================================
 
 function Get-ErrorText {
@@ -39,8 +39,8 @@ function Get-ErrorText {
     return $m
 }
 
-# Eenmalige Graph-aanroep met automatische retry bij throttling (429) en
-# tijdelijke serverfouten (503/504).
+# Single Graph call with automatic retry on throttling (429) and
+# temporary server errors (503/504).
 function Invoke-Graph {
     param(
         [Parameter(Mandatory = $true)][string]$Uri,
@@ -69,7 +69,7 @@ function Invoke-Graph {
     }
 }
 
-# Haalt alle pagina's van een Graph-lijst op ('@odata.nextLink' volgen).
+# Retrieves all pages of a Graph list (follows '@odata.nextLink').
 function Invoke-GraphAll {
     param([Parameter(Mandatory = $true)][string]$Uri)
 
@@ -104,10 +104,10 @@ function Format-FirstUpper {
 
 
 # =============================================================================
-# 2. LEESBARE NAMEN: platform, categorie, type
+# 2. READABLE NAMES: platform, category, type
 # =============================================================================
 
-# Platform bepalen uit een @odata.type, bijvoorbeeld '#microsoft.graph.iosVppApp'
+# Determine the platform from an @odata.type, for example '#microsoft.graph.iosVppApp'
 function Get-PlatformFromOData {
     param([string]$ODataType)
     $x = $ODataType.ToLowerInvariant()
@@ -119,7 +119,7 @@ function Get-PlatformFromOData {
     return ''
 }
 
-# Platform uit een tekstwaarde zoals 'windows10', 'macOS', 'androidEnterprise'
+# Platform from a text value such as 'windows10', 'macOS', 'androidEnterprise'
 function Get-PlatformLabel {
     param([string]$Value)
     if (-not $Value) { return '' }
@@ -132,7 +132,7 @@ function Get-PlatformLabel {
     return $Value
 }
 
-# Categorie voor endpoint security, op basis van templateFamily / templateType
+# Category for endpoint security, based on templateFamily / templateType
 function Get-CategoryFromText {
     param([string]$Text)
     $x = $Text.ToLowerInvariant()
@@ -164,11 +164,11 @@ function Get-FriendlyOData {
         windows10VpnConfiguration                       = 'VPN'
         windowsWifiConfiguration                        = 'Wi-Fi'
         windowsWifiEnterpriseEAPConfiguration           = 'Wi-Fi (enterprise)'
-        windows10SecureAssessmentConfiguration          = 'Secure assessment (onderwijs)'
+        windows10SecureAssessmentConfiguration          = 'Secure assessment (education)'
         windows10TeamGeneralConfiguration               = 'Surface Hub'
         windows10NetworkBoundaryConfiguration           = 'Network boundary'
-        windows10PkcsCertificateProfile                 = 'PKCS-certificaat'
-        windows10ImportedPFXCertificateProfile          = 'PFX-certificaat (geimporteerd)'
+        windows10PkcsCertificateProfile                 = 'PKCS certificate'
+        windows10ImportedPFXCertificateProfile          = 'PFX certificate (imported)'
         windowsDomainJoinConfiguration                  = 'Domain join'
         windowsKioskConfiguration                       = 'Kiosk'
         sharedPCConfiguration                           = 'Shared multi-user device'
@@ -187,7 +187,7 @@ function Get-FriendlyOData {
         activeDirectoryWindowsAutopilotDeploymentProfile = 'Hybrid Entra join'
         windows10EnrollmentCompletionPageConfiguration  = 'Enrollment Status Page (ESP)'
         deviceEnrollmentLimitConfiguration              = 'Device limit'
-        deviceEnrollmentPlatformRestrictionsConfiguration = 'Platform restrictions (alle platformen)'
+        deviceEnrollmentPlatformRestrictionsConfiguration = 'Platform restrictions (all platforms)'
         deviceEnrollmentPlatformRestrictionConfiguration  = 'Platform restriction'
         deviceEnrollmentWindowsHelloForBusinessConfiguration = 'Windows Hello for Business'
         deviceEnrollmentNotificationConfiguration       = 'Enrollment notifications'
@@ -205,28 +205,28 @@ function Get-FriendlyApp {
     $map = @{
         win32LobApp                 = 'Windows app (Win32)'
         windowsMobileMSI            = 'Windows MSI (LOB)'
-        microsoftStoreForBusinessApp= 'Microsoft Store (zakelijk)'
+        microsoftStoreForBusinessApp= 'Microsoft Store for Business'
         winGetApp                   = 'Microsoft Store (winget)'
         officeSuiteApp              = 'Microsoft 365 Apps'
         windowsUniversalAppX        = 'Windows universal app'
         windowsAppX                 = 'Windows AppX'
-        windowsWebApp               = 'Windows webkoppeling'
-        webApp                      = 'Webkoppeling'
+        windowsWebApp               = 'Windows web link'
+        webApp                      = 'Web link'
         windowsMicrosoftEdgeApp     = 'Microsoft Edge'
-        iosVppApp                   = 'iOS VPP-app'
-        iosStoreApp                 = 'iOS store-app'
-        iosLobApp                   = 'iOS LOB-app'
-        managedIOSStoreApp          = 'iOS store-app (beheerd)'
-        managedIOSLobApp            = 'iOS LOB-app (beheerd)'
+        iosVppApp                   = 'iOS VPP app'
+        iosStoreApp                 = 'iOS store app'
+        iosLobApp                   = 'iOS LOB app'
+        managedIOSStoreApp          = 'iOS store app (managed)'
+        managedIOSLobApp            = 'iOS LOB app (managed)'
         iosiPadOSWebClip            = 'iOS web clip'
-        managedAndroidStoreApp      = 'Android store-app (beheerd)'
-        managedAndroidLobApp        = 'Android LOB-app'
-        androidManagedStoreApp      = 'Managed Google Play-app'
-        androidStoreApp             = 'Android store-app'
-        androidForWorkApp           = 'Android Enterprise-app'
+        managedAndroidStoreApp      = 'Android store app (managed)'
+        managedAndroidLobApp        = 'Android LOB app'
+        androidManagedStoreApp      = 'Managed Google Play app'
+        androidStoreApp             = 'Android store app'
+        androidForWorkApp           = 'Android Enterprise app'
         macOSDmgApp                 = 'macOS DMG'
         macOSPkgApp                 = 'macOS PKG'
-        macOSLobApp                 = 'macOS LOB-app'
+        macOSLobApp                 = 'macOS LOB app'
         macOSMicrosoftEdgeApp       = 'Microsoft Edge (macOS)'
         macOSOfficeSuiteApp         = 'Microsoft 365 Apps (macOS)'
         macOSMicrosoftDefenderApp   = 'Microsoft Defender (macOS)'
@@ -241,24 +241,24 @@ function Get-IntentText {
         'required'                  { return 'Required' }
         'available'                 { return 'Available' }
         'uninstall'                 { return 'Uninstall' }
-        'availablewithoutenrollment'{ return 'Available (zonder enrollment)' }
+        'availablewithoutenrollment'{ return 'Available (without enrollment)' }
         default                     { return $Intent }
     }
 }
 
 
 # =============================================================================
-# 3. BRONNEN: welke Graph-endpoints lezen we uit?
+# 3. SOURCES: which Graph endpoints do we read?
 # =============================================================================
-# Per bron:
-#   Key  : korte sleutel, wordt gebruikt in de rest van de code
-#   Root : 'deviceManagement' of 'deviceAppManagement'
-#   Path : collectie onder /beta/<Root>/
-#   Type : weergavenaam (tekst of scriptblock dat $p ontvangt)
-#   Sub  : subtype (tekst of scriptblock)
-#   Plat : platform (tekst of scriptblock)
-#   Cat  : categorie voor endpoint security (tekst of scriptblock)
-# Een nieuwe bron toevoegen = hier 1 blok bijplakken.
+# Per source:
+#   Key  : short key, used throughout the rest of the code
+#   Root : 'deviceManagement' or 'deviceAppManagement'
+#   Path : collection under /beta/<Root>/
+#   Type : display name (text or scriptblock that receives $p)
+#   Sub  : subtype (text or scriptblock)
+#   Plat : platform (text or scriptblock)
+#   Cat  : category for endpoint security (text or scriptblock)
+# Adding a new source = paste one block here.
 
 $script:Sources = @(
     [pscustomobject]@{
@@ -307,7 +307,7 @@ $script:Sources = @(
     [pscustomobject]@{
         Key = 'health'; Root = 'deviceManagement'; Path = 'deviceHealthScripts'
         Type = 'Remediation'
-        Sub  = { param($p) if ($p.isGlobalScript) { 'Microsoft (ingebouwd)' } else { 'Custom' } }
+        Sub  = { param($p) if ($p.isGlobalScript) { 'Microsoft (built-in)' } else { 'Custom' } }
         Plat = 'Windows'; Cat = ''
     }
     [pscustomobject]@{
@@ -335,7 +335,7 @@ $script:Sources = @(
     }
     [pscustomobject]@{
         Key = 'appcfgmdm'; Root = 'deviceAppManagement'; Path = 'mobileAppConfigurations'
-        Type = 'App configuration'; Sub = 'Beheerde apparaten (MDM)'
+        Type = 'App configuration'; Sub = 'Managed devices (MDM)'
         Plat = { param($p) Get-PlatformFromOData ([string]$p.'@odata.type') }
         Cat  = ''
     }
@@ -366,7 +366,7 @@ $script:Sources = @(
     }
 )
 
-# Waarde van een bronveld: tekst of scriptblock dat het item ontvangt.
+# Value of a source field: text or a scriptblock that receives the item.
 function Get-Field {
     param($Field, $P)
     if ($Field -is [scriptblock]) {
@@ -378,7 +378,7 @@ function Get-Field {
 
 
 # =============================================================================
-# 4. GROEPEN EN FILTERS
+# 4. GROUPS AND FILTERS
 # =============================================================================
 
 function Add-GroupToCache {
@@ -391,8 +391,8 @@ function Add-GroupToCache {
     }
 }
 
-# Zoekt groepsnamen in bulk op (max 100 per aanroep) en valt per groep terug op
-# een losse aanroep. Groepen die niet bestaan krijgen Exists = $false.
+# Looks up group names in bulk (max 100 per call) and falls back to a single
+# call per group. Groups that do not exist get Exists = $false.
 function Resolve-GroupIds {
     param([string[]]$Ids)
 
@@ -415,9 +415,9 @@ function Resolve-GroupIds {
         } catch {
             $text = Get-ErrorText $_
             if ($text -match '404|NotFound|ResourceNotFound') {
-                $script:GroupCache[$id] = [pscustomobject]@{ Id = $id; Name = '(verwijderde groep ' + $id + ')'; Dynamic = $false; Exists = $false }
+                $script:GroupCache[$id] = [pscustomobject]@{ Id = $id; Name = '(deleted group ' + $id + ')'; Dynamic = $false; Exists = $false }
             } else {
-                $script:GroupCache[$id] = [pscustomobject]@{ Id = $id; Name = '(onbekende groep ' + $id + ')'; Dynamic = $false; Exists = $true }
+                $script:GroupCache[$id] = [pscustomobject]@{ Id = $id; Name = '(unknown group ' + $id + ')'; Dynamic = $false; Exists = $true }
             }
         }
     }
@@ -439,10 +439,10 @@ function Initialize-Filters {
 function Get-FilterDisplay {
     param([string]$Id)
     if ($script:FilterCache.ContainsKey($Id)) { return [string]$script:FilterCache[$Id].displayName }
-    return '(onbekend filter ' + $Id + ')'
+    return '(unknown filter ' + $Id + ')'
 }
 
-# Templates van endpoint security intents (geeft naam, categorie en platform)
+# Templates of endpoint security intents (gives name, category and platform)
 function Initialize-Templates {
     $script:TemplateMap = @{}
     foreach ($t in @(Invoke-GraphAll -Uri ($script:GraphBeta + '/deviceManagement/templates'))) {
@@ -459,10 +459,10 @@ function Get-GroupMemberCount {
 
 
 # =============================================================================
-# 5. ASSIGNMENTS OMZETTEN
+# 5. CONVERTING ASSIGNMENTS
 # =============================================================================
 
-# Zet 1 ruwe assignment om naar een bruikbaar object.
+# Converts one raw assignment into a usable object.
 # Kind: group | allDevices | allUsers | collection | other
 # Mode: Include | Exclude
 function ConvertTo-AssignmentInfo {
@@ -475,12 +475,12 @@ function ConvertTo-AssignmentInfo {
     $gid   = ''
     $name  = $odata
 
-    # Let op de volgorde: 'exclusionGroupAssignmentTarget' eindigt ook op 'groupAssignmentTarget'
+    # Mind the order: 'exclusionGroupAssignmentTarget' also ends in 'groupAssignmentTarget'
     if     ($odata -like '*exclusionGroupAssignmentTarget')  { $kind = 'group'; $mode = 'Exclude'; $gid = [string]$t.groupId }
     elseif ($odata -like '*groupAssignmentTarget')           { $kind = 'group'; $gid = [string]$t.groupId }
-    elseif ($odata -like '*allDevicesAssignmentTarget')      { $kind = 'allDevices'; $name = 'Alle apparaten' }
-    elseif ($odata -like '*allLicensedUsersAssignmentTarget'){ $kind = 'allUsers';   $name = 'Alle gebruikers' }
-    elseif ($odata -like '*collectionAssignmentTarget')      { $kind = 'collection'; $name = 'Configuration Manager-collectie ' + [string]$t.collectionId }
+    elseif ($odata -like '*allDevicesAssignmentTarget')      { $kind = 'allDevices'; $name = 'All devices' }
+    elseif ($odata -like '*allLicensedUsersAssignmentTarget'){ $kind = 'allUsers';   $name = 'All users' }
+    elseif ($odata -like '*collectionAssignmentTarget')      { $kind = 'collection'; $name = 'Configuration Manager collection ' + [string]$t.collectionId }
 
     $groupExists = $true
     if ($kind -eq 'group') {
@@ -489,7 +489,7 @@ function ConvertTo-AssignmentInfo {
         if ($gi -and $gi.Exists -eq $false) { $groupExists = $false }
     }
 
-    # Assignment filter (alleen tonen als er echt een filter actief is)
+    # Assignment filter (only shown when a filter is actually active)
     $fid   = [string]$t.deviceAndAppManagementAssignmentFilterId
     $fmode = [string]$t.deviceAndAppManagementAssignmentFilterType
     $fname = ''
@@ -499,7 +499,7 @@ function ConvertTo-AssignmentInfo {
         $fid = ''; $fmode = ''
     }
 
-    # Intent (alleen apps): required / available / uninstall
+    # Intent (apps only): required / available / uninstall
     $intent = ''
     if ($Assignment.intent) { $intent = Get-IntentText ([string]$Assignment.intent) }
 
@@ -521,7 +521,7 @@ function ConvertTo-AssignmentInfo {
     }
 }
 
-# Bouwt het uiteindelijke item-object (1 regel in de tabel).
+# Builds the final item object (one row in the table).
 function New-ItemObject {
     param($Src, $P, $RawAssignments)
 
@@ -533,9 +533,9 @@ function New-ItemObject {
     $inc = @($incInfos | ForEach-Object { $_.Label })
     $exc = @($excInfos | ForEach-Object { $_.Label })
 
-    if ($infos.Count -eq 0)      { $status = 'Niet toegewezen' }
-    elseif ($incInfos.Count -eq 0) { $status = 'Alleen uitsluiting' }
-    else                         { $status = 'Toegewezen' }
+    if ($infos.Count -eq 0)        { $status = 'Not assigned' }
+    elseif ($incInfos.Count -eq 0) { $status = 'Exclusion only' }
+    else                           { $status = 'Assigned' }
 
     $name = [string]$P.displayName
     if (-not $name) { $name = [string]$P.name }
@@ -562,11 +562,12 @@ function New-ItemObject {
 
 
 # =============================================================================
-# 6. ALLES OPHALEN
+# 6. RETRIEVING EVERYTHING
 # =============================================================================
 
-# Haalt 1 bron op. Probeert eerst alles in 1 keer met $expand=assignments
-# (snel). Lukt dat niet, dan wordt per item een aparte assignments-call gedaan.
+# Retrieves one source. First tries to get everything in one call with
+# $expand=assignments (fast). If that fails, it makes a separate assignments
+# call per item.
 function Get-SourceRaw {
     param($Src, $Into)
 
@@ -597,14 +598,14 @@ function Get-SourceRaw {
                 $assignments = @(Invoke-GraphAll -Uri ('{0}/{1}/assignments' -f $base, $p.id))
             } catch {
                 $assignments = @()
-                $script:LoadErrors.Add(('{0}/{1}: assignments niet op te halen' -f $Src.Path, $p.id))
+                $script:LoadErrors.Add(('{0}/{1}: could not retrieve assignments' -f $Src.Path, $p.id))
             }
         }
         $Into.Add([pscustomobject]@{ Src = $Src; P = $p; Assignments = $assignments })
     }
 }
 
-# Hoofdfunctie: haalt alle bronnen op en bouwt $script:AllItems.
+# Main function: retrieves all sources and builds $script:AllItems.
 function Get-AllItems {
     $script:LoadErrors.Clear()
     $script:Cancel   = $false
@@ -617,7 +618,7 @@ function Get-AllItems {
     $n   = $script:Sources.Count + 3
 
     Set-Progress 0 $n
-    Set-Status 'Templates en assignment filters ophalen...'
+    Set-Status 'Retrieving templates and assignment filters...'
     try { Initialize-Templates } catch { $script:LoadErrors.Add('templates: ' + (Get-ErrorText $_)) }
     try { Initialize-Filters }   catch { $script:LoadErrors.Add('assignmentFilters: ' + (Get-ErrorText $_)) }
 
@@ -625,15 +626,15 @@ function Get-AllItems {
     foreach ($src in $script:Sources) {
         if ($script:Cancel) { break }
         Set-Progress $i $n
-        Set-Status ('Ophalen ({0}/{1}): {2}' -f ($i - 1), $script:Sources.Count, $src.Path)
+        Set-Status ('Retrieving ({0}/{1}): {2}' -f ($i - 1), $script:Sources.Count, $src.Path)
         try { Get-SourceRaw -Src $src -Into $raw }
         catch { $script:LoadErrors.Add(('{0}: {1}' -f $src.Path, (Get-ErrorText $_))) }
         $i++
     }
 
-    # Groepsnamen in bulk opzoeken
+    # Look up group names in bulk
     Set-Progress ($n - 2) $n
-    Set-Status 'Groepsnamen opzoeken...'
+    Set-Status 'Resolving group names...'
     $ids = New-Object System.Collections.Generic.List[string]
     foreach ($r in $raw) {
         foreach ($a in $r.Assignments) {
@@ -643,26 +644,26 @@ function Get-AllItems {
     }
     Resolve-GroupIds @($ids.ToArray() | Select-Object -Unique)
 
-    # Items bouwen
+    # Build items
     Set-Progress ($n - 1) $n
-    Set-Status 'Overzicht samenstellen...'
+    Set-Status 'Building overview...'
     $items = New-Object System.Collections.Generic.List[object]
     foreach ($r in $raw) { $items.Add((New-ItemObject -Src $r.Src -P $r.P -RawAssignments $r.Assignments)) }
     $script:AllItems = @($items.ToArray() | Sort-Object Type, Name)
 
-    # ASR-regels (klein aantal extra calls)
+    # ASR rules (a small number of extra calls)
     if (-not $script:Cancel) {
         Set-Progress $n $n
         try { $script:AsrRows = @(Get-AsrRows -ScanAllCatalog $false) }
         catch { $script:LoadErrors.Add('ASR: ' + (Get-ErrorText $_)) }
     }
 
-    Set-Status ('Klaar: {0} items geladen.' -f $script:AllItems.Count)
+    Set-Status ('Done: {0} items loaded.' -f $script:AllItems.Count)
 }
 
 
 # =============================================================================
-# 7. APPARATEN
+# 7. DEVICES
 # =============================================================================
 
 function Get-DeviceRows {
@@ -679,14 +680,14 @@ function Get-DeviceRows {
             Owner      = [string]$_.managedDeviceOwnerType
             Model      = (([string]$_.manufacturer + ' ' + [string]$_.model).Trim())
             Serial     = [string]$_.serialNumber
-            Encrypted  = $(if ($_.isEncrypted) { 'Ja' } else { 'Nee' })
+            Encrypted  = $(if ($_.isEncrypted) { 'Yes' } else { 'No' })
             LastSync   = Format-GraphDate $_.lastSyncDateTime
             Id         = [string]$_.id
         }
     })
 }
 
-# Status van configuratie- en compliance-policies op 1 apparaat
+# Status of configuration and compliance policies on one device
 function Get-DeviceStateRows {
     param([string]$DeviceId)
 
@@ -704,7 +705,7 @@ function Get-DeviceStateRows {
 
 
 # =============================================================================
-# 8. ZOEKEN IN DE DIRECTORY (groepen en gebruikers)
+# 8. SEARCHING THE DIRECTORY (groups and users)
 # =============================================================================
 
 function Search-Directory {
@@ -718,22 +719,22 @@ function Search-Directory {
         $filter = "startswith(displayName,'" + $q + "')"
         $uri = $script:GraphV1 + '/groups?$filter=' + [uri]::EscapeDataString($filter) + '&$select=id,displayName,groupTypes&$top=25'
         foreach ($g in @((Invoke-Graph -Uri $uri).value)) {
-            $res.Add([pscustomobject]@{ Kind = 'group'; Id = [string]$g.id; Name = [string]$g.displayName; Display = ('[Groep] ' + [string]$g.displayName) })
+            $res.Add([pscustomobject]@{ Kind = 'group'; Id = [string]$g.id; Name = [string]$g.displayName; Display = ('[Group] ' + [string]$g.displayName) })
         }
-    } catch { $err += 'Groepen: ' + (Get-ErrorText $_) + ' ' }
+    } catch { $err += 'Groups: ' + (Get-ErrorText $_) + ' ' }
 
     try {
         $filter = "startswith(displayName,'" + $q + "') or startswith(userPrincipalName,'" + $q + "') or startswith(mail,'" + $q + "')"
         $uri = $script:GraphV1 + '/users?$filter=' + [uri]::EscapeDataString($filter) + '&$select=id,displayName,userPrincipalName&$top=25'
         foreach ($u in @((Invoke-Graph -Uri $uri).value)) {
-            $res.Add([pscustomobject]@{ Kind = 'user'; Id = [string]$u.id; Name = [string]$u.displayName; Display = ('[Gebruiker] ' + [string]$u.displayName + ' (' + [string]$u.userPrincipalName + ')') })
+            $res.Add([pscustomobject]@{ Kind = 'user'; Id = [string]$u.id; Name = [string]$u.displayName; Display = ('[User] ' + [string]$u.displayName + ' (' + [string]$u.userPrincipalName + ')') })
         }
-    } catch { $err += 'Gebruikers: ' + (Get-ErrorText $_) }
+    } catch { $err += 'Users: ' + (Get-ErrorText $_) }
 
     return [pscustomobject]@{ Results = $res.ToArray(); Error = $err }
 }
 
-# Alle groepen waar een gebruiker of groep (geneste) lid van is.
+# All groups a user or group is a (nested) member of.
 function Get-ParentGroups {
     param([string]$Kind, [string]$Id)
 

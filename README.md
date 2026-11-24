@@ -1,77 +1,77 @@
 # Intune Management Tool
 
-Een alleen-lezen Windows-tool met een Intune-achtige interface. Je ziet per policy, script, app of profiel aan wie het is toegewezen, apart voor include en exclude. Daarnaast bevat de tool een dashboard, ASR-overzicht, zoeken per groep of gebruiker, detail- en instellingenweergave en export. Er wordt niets in Intune gewijzigd.
+A read-only Windows tool with an Intune-like interface. For every policy, script, app or profile you see who it is assigned to, with include and exclude shown separately. The tool also offers a dashboard, an ASR overview, search by group or user, a details and settings view, and export. Nothing is changed in Intune.
 
-## Starten
+## Starting
 
-Dubbelklik op `Start-IntuneTool.bat`. De eerste keer wordt gevraagd of de module `Microsoft.Graph.Authentication` mag worden geïnstalleerd. Klik daarna op **Aanmelden met Microsoft**. Na het inloggen worden de gegevens automatisch geladen. Met **Gegevens laden** ververs je ze, en met **Annuleren** onderbreek je een lopende actie.
+Double-click `Start-IntuneTool.bat`. The first time, you are asked whether the `Microsoft.Graph.Authentication` module may be installed. Then click **Sign in with Microsoft**. After signing in, the data is loaded automatically. Use **Load data** to refresh it and **Cancel** to interrupt a running action.
 
-## De interface
+## The interface
 
-Links staat de navigatie, net als in Intune. Rechts staat de inhoud.
+The navigation is on the left, just like in Intune. The content is on the right.
 
-| Groep | Onderdelen |
+| Group | Sections |
 |---|---|
-| Overzicht | Dashboard, Aandachtspunten, Alle assignments, Zoeken op groep/gebruiker |
-| Apparaten | Configuration profiles, Compliance policies, Platform scripts, Remediations, Windows updates, Autopilot profielen, Enrollment, Apparaten |
-| Endpoint security | Alle endpoint security, ASR-regels, Attack surface reduction, Antivirus, Firewall, Disk encryption, EDR, Account protection, Security baselines |
+| Overview | Dashboard, Attention points, All assignments, Search by group/user |
+| Devices | Configuration profiles, Compliance policies, Platform scripts, Remediations, Windows updates, Autopilot profiles, Enrollment, Devices |
+| Endpoint security | All endpoint security, ASR rules, Attack surface reduction, Antivirus, Firewall, Disk encryption, EDR, Account protection, Security baselines |
 | Apps | Apps, App protection policies, App configuration policies |
-| Groepen en filters | Groepen in gebruik, Assignment filters |
+| Groups and filters | Groups in use, Assignment filters |
 
-Achter elk onderdeel staat het aantal items. In elke lijst kun je zoeken, filteren op platform en alleen items tonen die niet (volledig) zijn toegewezen. Kolommen sorteer je door op de kop te klikken. Dubbelklik op een regel voor details.
+Each section shows its item count. In every list you can search, filter by platform and show only items that are not (fully) assigned. Sort columns by clicking the header. Double-click a row for details.
 
-## Wat de tool laat zien
+## What the tool shows
 
-**Assignments.** Elke regel heeft een kolom met opgenomen groepen (include) en een kolom met uitgesloten groepen (exclude). Assignment filters staan erbij als `[filter: Naam (include)]`, en bij apps de intent (Required, Available, Uninstall). De status is *Toegewezen*, *Niet toegewezen* of *Alleen uitsluiting*.
+**Assignments.** Every row has a column with included groups (include) and a column with excluded groups (exclude). Assignment filters are shown as `[filter: Name (include)]`, and apps also show their intent (Required, Available, Uninstall). The status is *Assigned*, *Not assigned* or *Exclusion only*.
 
-**Dashboard.** Kaarten met totalen, niet-toegewezen items, groepen in gebruik, fouten en ASR-conflicten, plus een tabel per type. Klik op een kaart om naar de bijbehorende lijst te gaan.
+**Dashboard.** Cards with totals, unassigned items, groups in use, errors and ASR conflicts, plus a table per type. Click a card to jump to the matching list.
 
-**Aandachtspunten.** Items die niet zijn toegewezen of alleen uitsluitingen hebben, verwijzingen naar groepen die niet meer bestaan, groepen die zowel include als exclude zijn, en ASR-regels met conflicterende modi. Met de knop *Ledenaantal ophalen* worden ook groepen zonder leden herkend.
+**Attention points.** Items that are not assigned or have only exclusions, references to groups that no longer exist, groups that are both included and excluded, and ASR rules with conflicting modes. The *Get member counts* button also detects groups without members.
 
-**ASR-regels.** Elke Attack Surface Reduction-regel per policy met modus (Block, Audit, Warn, ...), include en exclude. Komt dezelfde regel in meerdere policies voor, dan staat er *Overlap* of *CONFLICT* bij met de betrokken policies. Met *Scan ook Settings catalog* worden ook alle Settings catalog-profielen doorzocht, omdat ASR daar vaak ook wordt ingesteld.
+**ASR rules.** Every Attack Surface Reduction rule per policy with its mode (Block, Audit, Warn, ...), include and exclude. If the same rule occurs in multiple policies, *Overlap* or *CONFLICT* is shown with the policies involved. The *Also scan Settings catalog* button also searches all Settings catalog profiles, because ASR is often configured there as well.
 
-**Zoeken op groep/gebruiker.** Typ het begin van een naam of UPN en kies een resultaat. Je ziet alles wat eraan is toegewezen, ook via bovenliggende (geneste) groepen en via "Alle gebruikers/apparaten". De kolom *Effect* laat zien of een uitsluiting wint van een opname. Vanuit *Groepen in gebruik* kom je met een dubbelklik direct in deze weergave.
+**Search by group/user.** Type the start of a name or UPN and pick a result. You see everything assigned to it, including via parent (nested) groups and via "All users/devices". The *Effect* column shows whether an exclusion wins over an inclusion. From *Groups in use*, a double-click takes you straight to this view.
 
-**Details.** Dubbelklik op een item voor tabbladen met assignments, eigenschappen en instellingen (Settings catalog met de echte Intune-namen, administrative templates, endpoint security, OMA-URI en overige eigenschappen). Bij platform scripts en remediations zie je de scriptinhoud. Bij een apparaat zie je de status van zijn configuration- en compliance-policies.
+**Details.** Double-click an item for tabs with assignments, properties and settings (Settings catalog with the real Intune names, administrative templates, endpoint security, OMA-URI and other properties). For platform scripts and remediations you see the script content. For a device you see the status of its configuration and compliance policies.
 
-**Export.** Elke lijst exporteer je naar Excel (.xlsx, Excel hoeft niet geïnstalleerd te zijn), CSV (puntkomma) of een HTML-rapport met zoeken en sorteren. Vanaf het dashboard maak je een volledig rapport, in Excel met meerdere bladen, waaronder een plat overzicht met één regel per assignment voor draaitabellen.
+**Export.** Export any list to Excel (.xlsx, Excel does not need to be installed), CSV (semicolon) or an HTML report with search and sorting. From the dashboard you create a full report, in Excel with multiple sheets, including a flat overview with one row per assignment for pivot tables.
 
-## Rechten
+## Permissions
 
-Alle rechten zijn alleen-lezen (delegated):
+All permissions are read-only (delegated):
 
-| Recht | Gebruikt voor |
+| Permission | Used for |
 |---|---|
-| `DeviceManagementConfiguration.Read.All` | profielen, compliance, scripts, endpoint security, filters, updates |
+| `DeviceManagementConfiguration.Read.All` | profiles, compliance, scripts, endpoint security, filters, updates |
 | `DeviceManagementApps.Read.All` | apps, app protection, app configuration |
-| `DeviceManagementServiceConfig.Read.All` | Autopilot en enrollment |
-| `DeviceManagementManagedDevices.Read.All` | apparaten en policy-status per apparaat |
-| `Group.Read.All` | groepsnamen |
-| `GroupMember.Read.All` | ledenaantal en lidmaatschappen |
-| `User.Read.All` | gebruikers zoeken |
+| `DeviceManagementServiceConfig.Read.All` | Autopilot and enrollment |
+| `DeviceManagementManagedDevices.Read.All` | devices and per-device policy status |
+| `Group.Read.All` | group names |
+| `GroupMember.Read.All` | member counts and memberships |
+| `User.Read.All` | searching for users |
 
-Vereist je tenant admin-consent voor de Microsoft Graph PowerShell-app, dan moet een beheerder dat eenmalig goedkeuren. Is een onderdeel niet beschikbaar (bijvoorbeeld door een ontbrekend recht of licentie), dan meldt de tool dat na het laden en blijven de overige onderdelen werken.
+If your tenant requires admin consent for the Microsoft Graph PowerShell app, an administrator must approve it once. If a section is not available (for example because of a missing permission or license), the tool reports this after loading and the other sections keep working.
 
-## Opbouw
+## Structure
 
-| Bestand | Inhoud |
+| File | Content |
 |---|---|
-| `IntuneTool.ps1` | opstarten, navigatie opbouwen, events koppelen |
-| `lib\Graph.ps1` | Graph-aanroepen met retry, alle bronnen, groepen en filters, laden |
-| `lib\Settings.ps1` | instellingen, scripts en ASR-regels uitlezen |
-| `lib\Analysis.ps1` | dashboard, aandachtspunten, groepen- en filteroverzicht, zoeken |
-| `lib\Export.ps1` | xlsx-, csv- en html-export |
-| `lib\Ui.ps1` | weergaven, tabellen, dashboard, detailvensters, aanmelden |
-| `ui\MainWindow.xaml`, `ui\Resources.xaml` | layout en stijlen |
+| `IntuneTool.ps1` | startup, building the navigation, wiring up events |
+| `lib\Graph.ps1` | Graph calls with retry, all sources, groups and filters, loading |
+| `lib\Settings.ps1` | reading settings, scripts and ASR rules |
+| `lib\Analysis.ps1` | dashboard, attention points, group and filter overview, search |
+| `lib\Export.ps1` | xlsx, csv and html export |
+| `lib\Ui.ps1` | views, tables, dashboard, detail windows, signing in |
+| `ui\MainWindow.xaml`, `ui\Resources.xaml` | layout and styles |
 
-## Uitbreiden
+## Extending
 
-Een nieuw type toevoegen is meestal één blok in `$script:Sources` in `lib\Graph.ps1` (endpoint, type, subtype, platform). Een nieuw navigatie-onderdeel is één regel in `$script:Views` in `lib\Ui.ps1`.
+Adding a new type is usually one block in `$script:Sources` in `lib\Graph.ps1` (endpoint, type, subtype, platform). A new navigation section is one line in `$script:Views` in `lib\Ui.ps1`.
 
-## Goed om te weten
+## Good to know
 
-- De tool gebruikt de beta-endpoints van Graph. Die kunnen op termijn veranderen.
-- Het laden gebeurt in het hoofdvenster. De statusbalk toont de voortgang en het venster blijft bediend via **Annuleren**. Bij grote tenants kan het even duren.
-- Assignments worden zo veel mogelijk in één keer opgehaald met `$expand=assignments`. Lukt dat niet voor een bron, dan valt de tool terug op een aanroep per item.
-- Het ledenaantal van groepen wordt alleen op verzoek opgehaald, omdat dit per groep een aparte aanroep kost.
-- Apparaten worden pas geladen als je die pagina opent.
+- The tool uses the beta endpoints of Graph. These may change over time.
+- Loading happens in the main window. The status bar shows progress and you can stop it with **Cancel**. It can take a while on large tenants.
+- Assignments are retrieved in one go where possible with `$expand=assignments`. If that fails for a source, the tool falls back to one call per item.
+- Group member counts are only retrieved on request, because this takes a separate call per group.
+- Devices are only loaded when you open that page.
